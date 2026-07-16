@@ -1,0 +1,8 @@
+# Ignore downloaded packages, generated output, and local secrets.
+# Keep these files out of Git because they can be recreated or should stay private.
+node_modules/
+dist/
+.env
+.env.local
+playwright-report/
+test-results/
