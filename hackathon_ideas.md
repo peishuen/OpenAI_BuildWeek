@@ -19,6 +19,13 @@ When pitching, judges will inevitably ask: *"Why can't a developer just copy and
 
 *(Pitch Summary: "ChatGPT is great when you have the context. But in E2E testing, gathering the context takes 90% of the time. Our agent gathers the context, cleans it, writes the fix, and verifies it. We turn a 10-minute manual chore into a 10-second background task.")*
 
+## The Competitive Moat Part 2 (Why not just use generic agents like Claude Computer Use?)
+Judges might ask: *"Why not just use an agent with 'Computer Use' or browser-control to run the tests visually?"* 
+1. **Speed & Scalability (The CI/CD Nightmare):** Generic visual agents take screenshots, move cursors, and evaluate pixel changes step-by-step. They take minutes per test. If a CI/CD pipeline runs 500 tests, a visual agent would take hours and cost a fortune. Our tool uses headless Playwright (which takes milliseconds) for 99% of runs, and only invokes the LLM when an error occurs.
+2. **Permanent Code vs. Ephemeral Actions:** If you prompt a generic agent to test a page, it does it once. Tomorrow, it has to "think" through the UI all over again. Our tool *writes a permanent Playwright script fix* and commits it. It turns agentic intelligence into a deterministic, version-controlled artifact.
+3. **Reliability:** Generic visual agents are highly experimental and prone to hallucination on dynamic UIs. Traditional scripts are 100% reliable until the UI changes. Our tool provides the reliability of traditional code combined with the resilience of AI.
+*(Pitch Summary: "Generic AI agents are too slow and expensive to run in a massive CI/CD pipeline on every commit. We use AI not to run the tests, but to permanently write and repair the lightning-fast scripts that do.")*
+
 ## Target Audience & Persona
 - **Primary Users:** Frontend Developers, QA Automation Engineers, and DevOps Engineers.
 - **The Core Metric:** Hours saved per week on test maintenance.
