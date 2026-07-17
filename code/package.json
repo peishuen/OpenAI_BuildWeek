@@ -10,7 +10,10 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "mutation:apply": "node scripts/repair-mutation.mjs apply",
+    "mutation:reset": "node scripts/repair-mutation.mjs reset",
+    "test:mutation": "node scripts/repair-mutation.mjs verify"
   },
   "dependencies": {
     "dotenv": "^16.6.1",
