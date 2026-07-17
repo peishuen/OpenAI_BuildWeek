@@ -1,3 +1,6 @@
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -5,7 +8,11 @@ import {
   NodePlaywrightTestRunner,
   type PlaywrightCommand,
 } from "../../src/playwright-test-runner";
-import { targetFailureReport, unrelatedFailureReport } from "../fixtures/playwright-reports";
+import {
+  targetFailureReport,
+  timedOutTargetFailureReport,
+  unrelatedFailureReport,
+} from "../fixtures/playwright-reports";
 
 describe("extractRepairTargetFailure", () => {
   it("extracts the locator and source location from one tagged Playwright failure", () => {
@@ -16,6 +23,18 @@ describe("extractRepairTargetFailure", () => {
         errorExcerpt: "locator.click: Timeout exceeded while waiting for locator('#sign-in-button').",
         sourcePath: "tests/e2e/login.spec.ts",
         sourceLine: 4,
+      },
+    });
+  });
+
+  it("extracts a locator from a timed-out target when Playwright reports it after the timeout summary", () => {
+    expect(extractRepairTargetFailure(timedOutTargetFailureReport)).toEqual({
+      ok: true,
+      failure: {
+        selector: "#sign-in-button",
+        errorExcerpt: "locator.click: Test timeout exceeded while waiting for locator('#sign-in-button').",
+        sourcePath: "tests/e2e/login.spec.ts",
+        sourceLine: 34,
       },
     });
   });
@@ -51,9 +70,27 @@ describe("NodePlaywrightTestRunner", () => {
 
     expect(result).toMatchObject({ exitCode: 1, report: targetFailureReport });
     expect(commands).toHaveLength(1);
-    expect(commands[0].args).toEqual(["playwright", "test", "--grep", "@repair-target", "--reporter=json"]);
+    expect(commands[0].command).toBe(process.execPath);
+    expect(commands[0].args).toEqual([
+      expect.stringMatching(/[\\/]@playwright[\\/]test[\\/]cli\.js$/),
+      "test",
+      "--grep",
+      "@repair-target",
+      "--reporter=json",
+    ]);
     expect(commands[0].shell).toBe(false);
   });
+
+  it("runs the installed Playwright CLI without a Windows command shell", async () => {
+    const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+    const runner = new NodePlaywrightTestRunner({ projectRoot });
+
+    const result = await runner.runTarget();
+
+    expect(result).toMatchObject({ exitCode: 0 });
+    expect(result.error).toBeUndefined();
+    expect(result.report).toBeDefined();
+  }, 30_000);
 
   it("returns a safe error when the JSON report is malformed", async () => {
     const runner = new NodePlaywrightTestRunner({

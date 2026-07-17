@@ -1,7 +1,11 @@
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+const require = createRequire(import.meta.url);
+const playwrightCliPath = require.resolve("@playwright/test/cli");
 
 export type PlaywrightRunResult = {
   exitCode: number | null;
@@ -85,19 +89,19 @@ export class NodePlaywrightTestRunner implements PlaywrightTestRunner {
   }
 
   runTarget() {
-    return this.run(["playwright", "test", "--grep", "@repair-target", "--reporter=json"]);
+    return this.run(["test", "--grep", "@repair-target", "--reporter=json"]);
   }
 
   runSuite() {
-    return this.run(["playwright", "test", "--reporter=json"]);
+    return this.run(["test", "--reporter=json"]);
   }
 
   private async run(args: readonly string[]): Promise<PlaywrightRunResult> {
     const reportDirectory = await mkdtemp(join(tmpdir(), "repair-playwright-"));
     const reportPath = join(reportDirectory, "report.json");
     const command: PlaywrightCommand = {
-      command: process.platform === "win32" ? "npx.cmd" : "npx",
-      args,
+      command: process.execPath,
+      args: [playwrightCliPath, ...args],
       cwd: this.options.projectRoot,
       env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_FILE: reportPath, FORCE_COLOR: "0" },
       shell: false,
@@ -182,7 +186,10 @@ export function extractRepairTargetFailure(report: unknown): RepairTargetFailure
     });
   const failuresFor = (candidateSpecs: Record<string, unknown>[]) => candidateSpecs.flatMap((spec) => asArray(spec.tests).flatMap((test) => {
     const testRecord = asRecord(test);
-    return testRecord ? asArray(testRecord.results).filter((result) => asRecord(result)?.status === "failed") : [];
+    return testRecord ? asArray(testRecord.results).filter((result) => {
+      const status = asRecord(result)?.status;
+      return status === "failed" || status === "timedOut";
+    }) : [];
   }));
   const failures = failuresFor(targetSpecs);
 
@@ -191,25 +198,31 @@ export function extractRepairTargetFailure(report: unknown): RepairTargetFailure
   }
 
   const failureResult = asRecord(failures[0]);
-  const firstError = asRecord(asArray(failureResult?.errors)[0]);
-  const message = typeof firstError?.message === "string" ? firstError.message : "";
-  const stack = typeof firstError?.stack === "string" ? firstError.stack : "";
-  const selector = /locator\((['"])(.*?)\1\)/.exec(`${message}\n${stack}`)?.[2];
-  const sourceMatch = /((?:[A-Za-z]:)?[^\s()]*tests[\\/]e2e[\\/][^:\n()]+\.ts):(\d+)(?::\d+)?/.exec(`${stack}\n${message}`);
-  const sourcePath = sourceMatch ? normalizeSourcePath(sourceMatch[1]) : undefined;
-  const sourceLine = sourceMatch ? Number(sourceMatch[2]) : undefined;
+  const failureErrors = asArray(failureResult?.errors).flatMap((error) => {
+    const errorRecord = asRecord(error);
+    return errorRecord ? [errorRecord] : [];
+  });
 
-  if (!selector || !sourcePath || !sourceLine) {
-    return { ok: false, message: "The repair-target failure did not contain a locator and source location." };
+  for (const failureError of failureErrors) {
+    const message = typeof failureError.message === "string" ? failureError.message : "";
+    const stack = typeof failureError.stack === "string" ? failureError.stack : "";
+    const selector = /locator\((['"])(.*?)\1\)/.exec(`${message}\n${stack}`)?.[2];
+    const sourceMatch = /((?:[A-Za-z]:)?[^\s()]*tests[\\/]e2e[\\/][^:\n()]+\.ts):(\d+)(?::\d+)?/.exec(`${stack}\n${message}`);
+    const sourcePath = sourceMatch ? normalizeSourcePath(sourceMatch[1]) : undefined;
+    const sourceLine = sourceMatch ? Number(sourceMatch[2]) : undefined;
+
+    if (selector && sourcePath && sourceLine) {
+      return {
+        ok: true,
+        failure: {
+          selector,
+          errorExcerpt: message.slice(0, 1_000),
+          sourcePath,
+          sourceLine,
+        },
+      };
+    }
   }
 
-  return {
-    ok: true,
-    failure: {
-      selector,
-      errorExcerpt: message.slice(0, 1_000),
-      sourcePath,
-      sourceLine,
-    },
-  };
+  return { ok: false, message: "The repair-target failure did not contain a locator and source location." };
 }

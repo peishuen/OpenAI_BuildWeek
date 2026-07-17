@@ -4,5 +4,8 @@ node_modules/
 dist/
 .env
 .env.local
+.env.*.local
+*.pem
+*.key
 playwright-report/
 test-results/

@@ -43,3 +43,34 @@ export const unrelatedFailureReport = {
     },
   ],
 };
+
+export const timedOutTargetFailureReport = {
+  suites: [
+    {
+      title: "login.spec.ts",
+      specs: [
+        {
+          title: "signs in with the repair-target selector @repair-target",
+          tags: ["repair-target"],
+          tests: [
+            {
+              results: [
+                {
+                  status: "timedOut",
+                  errors: [
+                    { message: "Test timeout of 10000ms exceeded." },
+                    {
+                      message: "locator.click: Test timeout exceeded while waiting for locator('#sign-in-button').",
+                      stack: "tests/e2e/login.spec.ts:34:41",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      suites: [],
+    },
+  ],
+};
