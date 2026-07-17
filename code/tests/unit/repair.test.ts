@@ -4,11 +4,11 @@ import {
   RepairProposalSchema,
   transitionRun,
   type RepairRun,
-} from "./repair";
+} from "../../src/repair";
 import {
     createFailureContext,
     sanitizeDomSnapshot,
-} from "./failure-context";
+} from "../../src/failure-context";
 
 /*
     Test the repair-run safety rules.
