@@ -103,7 +103,8 @@ export class NodePlaywrightTestRunner implements PlaywrightTestRunner {
       command: process.execPath,
       args: [playwrightCliPath, ...args],
       cwd: this.options.projectRoot,
-      env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_FILE: reportPath, FORCE_COLOR: "0" },
+      // A nested Playwright process must start the local server even when this runner was invoked by Vitest.
+      env: { ...process.env, VITEST: undefined, PLAYWRIGHT_JSON_OUTPUT_FILE: reportPath, FORCE_COLOR: "0" },
       shell: false,
       writeReport: (contents) => writeFile(reportPath, contents, "utf8"),
     };

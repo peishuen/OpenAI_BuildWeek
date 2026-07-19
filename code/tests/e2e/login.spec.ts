@@ -78,7 +78,7 @@ test("signs in with the repair-target selector @repair-target", async ({ page })
 
   await page.getByLabel("Email").fill("demo@example.com");
   await page.getByLabel("Password").fill("password123");
-  await page.locator("#sign-in-button-v2").click();
+  await page.locator("#sign-in-button").click();
 
   await expect(page.locator(".toast[role='status']")).toHaveText("Success: Signed in successfully.");
 });

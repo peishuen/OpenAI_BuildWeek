@@ -1,5 +1,5 @@
 /*
-  Configure Playwright to start the local app before browser tests run.
+  Configure Playwright to start the local app before browser tests run
   Source: https://playwright.dev/docs/test-configuration
 */
 import { defineConfig } from "@playwright/test";
@@ -12,7 +12,8 @@ export default defineConfig({
   },
   webServer: {
     command: "npm run dev",
-    url: "http://127.0.0.1:5173",
+    // Wait for Express as well as Vite so dashboard tests never call /api before it is ready
+    url: "http://127.0.0.1:3001/api/health",
     reuseExistingServer: !process.env.CI,
   }
 })

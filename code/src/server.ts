@@ -6,7 +6,9 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
 
+import { readRepairEnvironment } from "./env";
 import { FixtureProposalProvider, recordedFailureDomSnapshot } from "./fixture-proposal-provider";
+import { OpenAiProposalProvider } from "./openai-proposal-provider";
 import { RepairEventStore } from "./repair-events";
 import { RepairOrchestrator } from "./repair-orchestrator";
 import { apiErrorHandler, createRepairRouter, type RepairRunController } from "./repair-routes";
@@ -35,11 +37,15 @@ export function createApp(controller: RepairRunController, events: RepairEventSt
 const port = Number(process.env.PORT ?? 3001);
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const events = new RepairEventStore();
+const environment = readRepairEnvironment();
+const proposalProvider = environment.REPAIR_PROPOSAL_PROVIDER === "openai"
+  ? new OpenAiProposalProvider({ apiKey: environment.OPENAI_API_KEY, model: environment.OPENAI_MODEL })
+  : new FixtureProposalProvider();
 // Connect repair progress updates to the in-memory SSE event store.
 const orchestrator = new RepairOrchestrator({
   projectRoot,
   runner: new NodePlaywrightTestRunner({ projectRoot }),
-  proposalProvider: new FixtureProposalProvider(),
+  proposalProvider,
   recordedDomSnapshot: recordedFailureDomSnapshot,
   onRunUpdate: (run) => events.publish(run),
 });

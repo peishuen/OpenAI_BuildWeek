@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { createFailureContext } from "./failure-context";
+import { ProposalProviderError } from "./openai-proposal-provider";
 import { applyValidatedPatch, restorePatch, type PatchSnapshot } from "./test-patcher";
 import { validateRepairProposal, type ValidatedPatchPlan } from "./proposal-validator";
 import { transitionRun, type RepairRun } from "./repair";
@@ -75,7 +76,10 @@ export class RepairOrchestrator {
       };
       this.publish(stored.run);
       return copyRun(stored.run);
-    } catch {
+    } catch (error) {
+      if (error instanceof ProposalProviderError) {
+        return this.fail(stored, error.message);
+      }
       return this.fail(stored, "The repair run could not capture a safe failure context.");
     }
   }

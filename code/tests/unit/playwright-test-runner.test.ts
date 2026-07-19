@@ -79,6 +79,7 @@ describe("NodePlaywrightTestRunner", () => {
       "--reporter=json",
     ]);
     expect(commands[0].shell).toBe(false);
+    expect(commands[0].env.VITEST).toBeUndefined();
   });
 
   it("runs the installed Playwright CLI without a Windows command shell", async () => {

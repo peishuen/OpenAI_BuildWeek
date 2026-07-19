@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { RepairOrchestrator } from "../../src/repair-orchestrator";
+import { ProposalProviderError } from "../../src/openai-proposal-provider";
 import type { PlaywrightRunResult, PlaywrightTestRunner } from "../../src/playwright-test-runner";
 import type { ProposalProvider } from "../../src/proposal-provider";
 import { validRepairProposal } from "../fixtures/repair-proposals";
@@ -148,6 +149,28 @@ describe("RepairOrchestrator", () => {
     const failed = await orchestrator.start();
     expect(failed.status).toBe("failed");
     expect((await orchestrator.approve("run-1"))?.status).toBe("failed");
+    await expect(readFile(workspace.testPath, "utf8")).resolves.toBe(originalSource);
+  });
+
+  it("surfaces an expected live-provider error without patching the test", async () => {
+    const workspace = await createWorkspace();
+    const runner = new FakeRunner([run(1, targetFailureReport)], run(0));
+    const orchestrator = new RepairOrchestrator({
+      projectRoot: workspace.projectRoot,
+      runner,
+      proposalProvider: {
+        propose: async () => { throw new ProposalProviderError("A server-only OpenAI API key is required for live proposals."); },
+      },
+      recordedDomSnapshot: '<button id="sign-in-button-v2">Sign in</button>',
+      createRunId: () => "run-1",
+    });
+
+    const failed = await orchestrator.start();
+
+    expect(failed).toMatchObject({
+      status: "failed",
+      error: "A server-only OpenAI API key is required for live proposals.",
+    });
     await expect(readFile(workspace.testPath, "utf8")).resolves.toBe(originalSource);
   });
 });
