@@ -19,6 +19,7 @@ export type RepairOrchestratorOptions = {
   proposalProvider: ProposalProvider;
   recordedDomSnapshot: string;
   createRunId?: () => string;
+  onRunUpdate?: (run: RepairRun) => void;
 };
 
 function copyRun(run: RepairRun): RepairRun {
@@ -46,6 +47,7 @@ export class RepairOrchestrator {
     const run: RepairRun = { id: this.createRunId(), status: "capturingFailure" };
     const stored: StoredRun = { run };
     this.runs.set(run.id, stored);
+    this.publish(run);
 
     try {
       const targetResult = await this.options.runner.runTarget();
@@ -71,6 +73,7 @@ export class RepairOrchestrator {
         failure,
         proposal: validation.plan.proposal,
       };
+      this.publish(stored.run);
       return copyRun(stored.run);
     } catch {
       return this.fail(stored, "The repair run could not capture a safe failure context.");
@@ -85,7 +88,9 @@ export class RepairOrchestrator {
 
     try {
       stored.run = transitionRun(stored.run, "approved");
+      this.publish(stored.run);
       stored.run = transitionRun(stored.run, "applyingPatch");
+      this.publish(stored.run);
       const applied = await applyValidatedPatch(stored.plan);
       if (!applied.ok) {
         return this.fail(stored, applied.message);
@@ -93,18 +98,21 @@ export class RepairOrchestrator {
 
       stored.snapshot = applied.snapshot;
       stored.run = transitionRun(stored.run, "verifyingTarget");
+      this.publish(stored.run);
       const targetResult = await this.options.runner.runTarget();
       if (targetResult.error || targetResult.exitCode !== 0) {
         return this.restoreAndFail(stored, "The repaired target test did not pass.");
       }
 
       stored.run = transitionRun(stored.run, "verifyingSuite");
+      this.publish(stored.run);
       const suiteResult = await this.options.runner.runSuite();
       if (suiteResult.error || suiteResult.exitCode !== 0) {
         return this.restoreAndFail(stored, "The complete Playwright suite did not pass.");
       }
 
       stored.run = transitionRun(stored.run, "completed");
+      this.publish(stored.run);
       return copyRun(stored.run);
     } catch {
       return this.restoreAndFail(stored, "The approved repair could not be verified safely.");
@@ -125,6 +133,12 @@ export class RepairOrchestrator {
       stored.run = transitionRun(stored.run, "failed");
     }
     stored.run = { ...stored.run, error };
+    this.publish(stored.run);
     return copyRun(stored.run);
+  }
+
+  private publish(run: RepairRun) {
+    // Send a copy so API listeners cannot mutate stored repair state.
+    this.options.onRunUpdate?.(copyRun(run));
   }
 }

@@ -50,8 +50,10 @@ export type RepairRun = {
 // describe the small event shape used later by the dashboard
 export type RepairEvent = {
   runId: string;
+  sequence: number;
   status: RunStatus;
   occurredAt: string;
+  run: RepairRun;
 };
 
 // list the only safe next stages for every current stage

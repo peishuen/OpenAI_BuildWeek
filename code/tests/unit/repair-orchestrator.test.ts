@@ -65,6 +65,33 @@ class FixtureProvider implements ProposalProvider {
 }
 
 describe("RepairOrchestrator", () => {
+  it("publishes each repair status in workflow order", async () => {
+    const workspace = await createWorkspace();
+    const runner = new FakeRunner([run(1, targetFailureReport), run(0)], run(0));
+    const statuses: string[] = [];
+    const orchestrator = new RepairOrchestrator({
+      projectRoot: workspace.projectRoot,
+      runner,
+      proposalProvider: new FixtureProvider(),
+      recordedDomSnapshot: '<button id="sign-in-button-v2">Sign in</button>',
+      createRunId: () => "run-1",
+      onRunUpdate: (updatedRun) => statuses.push(updatedRun.status),
+    });
+
+    await orchestrator.start();
+    await orchestrator.approve("run-1");
+
+    expect(statuses).toEqual([
+      "capturingFailure",
+      "awaitingApproval",
+      "approved",
+      "applyingPatch",
+      "verifyingTarget",
+      "verifyingSuite",
+      "completed",
+    ]);
+  });
+
   it("waits for approval before changing the test and completes target then suite verification", async () => {
     const workspace = await createWorkspace();
     const runner = new FakeRunner([run(1, targetFailureReport), run(0)], run(0));
