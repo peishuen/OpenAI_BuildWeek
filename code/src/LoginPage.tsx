@@ -32,8 +32,8 @@ export default function LoginPage() {
 
   return (
     <div className="login-layout">
-      <main>
-        <h1>Self-Healing Playwright Repair Console</h1>
+      <main className="login-card">
+        <h1>Controlled login fixture</h1>
 
         <form noValidate onSubmit={handleSubmit}>
           <label htmlFor="email">Email</label>

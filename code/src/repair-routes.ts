@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type ErrorRequestHandler } from "express";
 
 import type { RepairRun } from "./repair";
 import type { RepairEventStore } from "./repair-events";
@@ -7,6 +7,21 @@ export type RepairRunController = {
   start(): Promise<RepairRun>;
   getRun(runId: string): Readonly<RepairRun> | undefined;
   approve(runId: string): Promise<RepairRun | undefined>;
+};
+
+// Return one generic response when an unexpected API error reaches Express
+export const apiErrorHandler: ErrorRequestHandler = (error, _request, response, next) => {
+  if (response.headersSent) {
+    next(error);
+    return;
+  }
+
+  response.status(500).json({
+    error: {
+      code: "REPAIR_API_ERROR",
+      message: "The repair service could not complete this request.",
+    },
+  });
 };
 
 export function createRepairRouter(controller: RepairRunController, events: RepairEventStore) {

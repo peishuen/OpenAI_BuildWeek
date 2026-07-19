@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import type { RepairRun } from "../../src/repair";
 import { RepairEventStore } from "../../src/repair-events";
-import { createRepairRouter, type RepairRunController } from "../../src/repair-routes";
+import { apiErrorHandler, createRepairRouter, type RepairRunController } from "../../src/repair-routes";
 
 // Imitate the repair engine so API tests do not run Playwright
 class FakeRepairRunController implements RepairRunController {
@@ -51,6 +51,7 @@ async function createApi() {
   const app = express();
   app.use(express.json());
   app.use("/api", createRepairRouter(controller, events));
+  app.use("/api", apiErrorHandler);
 
   const server = createServer(app);
   servers.push(server);
@@ -112,6 +113,35 @@ describe("repair run API", () => {
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toEqual({
       error: { code: "RUN_NOT_FOUND", message: "Repair run was not found." },
+    });
+  });
+
+  it("hides unexpected internal errors from API clients", async () => {
+    // Throw an error containing text that must never reach the browser
+    const controller: RepairRunController = {
+      start: async () => { throw new Error("OPENAI_API_KEY=not-for-the-browser"); },
+      getRun: () => undefined,
+      approve: async () => undefined,
+    };
+    const events = new RepairEventStore();
+    const app = express();
+    app.use("/api", createRepairRouter(controller, events));
+    app.use("/api", apiErrorHandler);
+    const server = createServer(app);
+    servers.push(server);
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("Expected a TCP server address.");
+
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/repair-runs`, { method: "POST" });
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "REPAIR_API_ERROR",
+        message: "The repair service could not complete this request.",
+      },
     });
   });
 
