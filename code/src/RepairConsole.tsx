@@ -1,40 +1,74 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-const staticRepairRun = {
-  status: "awaitingApproval" as const,
-  failure: {
-    selector: "#sign-in-button",
-    sourcePath: "tests/e2e/login.spec.ts",
-    sourceLine: 43,
-    errorExcerpt: "Locator could not find the sign-in button before the test timed out.",
-    domSnapshot: '<button id="sign-in-button-v2">Sign in</button>',
-  },
-  proposal: {
-    replacementSelector: "#sign-in-button-v2",
-    diagnosis: "The sign-in button ID changed while its visible label stayed the same.",
-    evidence: [
-      "The sanitized DOM contains a button with id=\"sign-in-button-v2\".",
-      "The button still has the visible text “Sign in”.",
-    ],
-  },
+import { approveRepairRun, startRepairRun, subscribeToRepairRun } from "./repair-client";
+import type { RepairRun, RunStatus } from "./repair";
+
+const timelineSteps: Array<[string, RunStatus]> = [
+  ["Failure captured", "capturingFailure"],
+  ["Proposal ready", "awaitingApproval"],
+  ["Patch applied", "applyingPatch"],
+  ["Target test verified", "verifyingTarget"],
+  ["Full suite verified", "verifyingSuite"],
+];
+
+const statusLabels: Record<RunStatus, string> = {
+  capturingFailure: "Capturing failure",
+  awaitingApproval: "Awaiting approval",
+  approved: "Approved",
+  applyingPatch: "Applying patch",
+  verifyingTarget: "Verifying target test",
+  verifyingSuite: "Verifying full suite",
+  completed: "Repair completed",
+  failed: "Repair failed",
 };
 
-const timelineSteps = [
-  ["Failure captured", "complete"],
-  ["Proposal ready", "complete"],
-  ["Awaiting approval", "active"],
-  ["Patch applied", "pending"],
-  ["Target test verified", "pending"],
-  ["Full suite verified", "pending"],
-] as const;
+function timelineState(status: RunStatus | undefined, stepStatus: RunStatus) {
+  if (!status) return "pending";
+  if (status === "failed") return "pending";
+  if (status === "completed") return "complete";
+  const currentIndex = timelineSteps.findIndex(([, candidate]) => candidate === status);
+  const stepIndex = timelineSteps.findIndex(([, candidate]) => candidate === stepStatus);
+  return stepIndex < currentIndex ? "complete" : stepIndex === currentIndex ? "active" : "pending";
+}
 
 export default function RepairConsole() {
-  const [notice, setNotice] = useState("");
-  const isAwaitingApproval = staticRepairRun.status === "awaitingApproval";
+  const [run, setRun] = useState<RepairRun>();
+  const [requestError, setRequestError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function showStaticPreviewNotice() {
-    setNotice("This static preview will connect to the approval API in Task 10.");
+  useEffect(() => {
+    if (!run?.id) return;
+    return subscribeToRepairRun(run.id, (event) => setRun(event.run));
+  }, [run?.id]);
+
+  async function startRepair() {
+    setIsSubmitting(true);
+    setRequestError("");
+    try {
+      setRun(await startRepairRun());
+    } catch {
+      setRequestError("The repair service could not start a repair run.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
+
+  async function approveRepair() {
+    if (!run || run.status !== "awaitingApproval") return;
+
+    setIsSubmitting(true);
+    setRequestError("");
+    try {
+      setRun(await approveRepairRun(run.id));
+    } catch {
+      setRequestError("The repair service could not approve this repair run.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  const canApprove = run?.status === "awaitingApproval" && !isSubmitting;
+  const status = run?.status;
 
   return (
     <section className="repair-console" aria-labelledby="repair-console-title">
@@ -44,8 +78,8 @@ export default function RepairConsole() {
           <h1 id="repair-console-title">Repair Console</h1>
           <p className="console-intro">Review one safe selector change before modifying a test file.</p>
         </div>
-        <p className="status-badge" aria-label="Repair status: awaiting approval">
-          <span aria-hidden="true">●</span> Awaiting approval
+        <p className={`status-badge ${status === "failed" ? "status-failed" : ""}`} aria-label={`Repair status: ${status ? statusLabels[status] : "ready"}`}>
+          <span aria-hidden="true">●</span> {status ? statusLabels[status] : "Ready to start"}
         </p>
       </header>
 
@@ -53,52 +87,53 @@ export default function RepairConsole() {
         <section className="repair-panel" aria-labelledby="failure-title">
           <p className="panel-kicker">01</p>
           <h2 id="failure-title">Failure</h2>
-          <dl className="detail-list">
-            <div>
-              <dt>Failed selector</dt>
-              <dd><code>{staticRepairRun.failure.selector}</code></dd>
-            </div>
-            <div>
-              <dt>Source</dt>
-              <dd><code>{staticRepairRun.failure.sourcePath}:{staticRepairRun.failure.sourceLine}</code></dd>
-            </div>
-            <div>
-              <dt>Error</dt>
-              <dd>{staticRepairRun.failure.errorExcerpt}</dd>
-            </div>
-          </dl>
+          {run?.failure ? (
+            <dl className="detail-list">
+              <div><dt>Failed selector</dt><dd><code>{run.failure.selector}</code></dd></div>
+              <div><dt>Source</dt><dd><code>{run.failure.sourcePath}:{run.failure.sourceLine}</code></dd></div>
+              <div><dt>Error</dt><dd className="error-excerpt">{run.failure.errorExcerpt}</dd></div>
+            </dl>
+          ) : <p className="empty-panel-copy">Start a repair run to capture the known failing test.</p>}
         </section>
 
         <section className="repair-panel" aria-labelledby="diagnosis-title">
           <p className="panel-kicker">02</p>
           <h2 id="diagnosis-title">Diagnosis</h2>
-          <p className="diagnosis-copy">{staticRepairRun.proposal.diagnosis}</p>
-          <h3>Evidence</h3>
-          <ul className="evidence-list">
-            {staticRepairRun.proposal.evidence.map((item) => <li key={item}>{item}</li>)}
-          </ul>
-          <h3>Sanitized DOM</h3>
-          <pre className="dom-preview"><code>{staticRepairRun.failure.domSnapshot}</code></pre>
+          {run?.proposal && run.failure ? (
+            <>
+              <p className="diagnosis-copy">{run.proposal.diagnosis}</p>
+              <h3>Evidence</h3>
+              <ul className="evidence-list"><li>{run.proposal.evidence}</li></ul>
+              <h3>Sanitized DOM</h3>
+              <pre className="dom-preview"><code>{run.failure.domSnapshot}</code></pre>
+            </>
+          ) : <p className="empty-panel-copy">A validated, evidence-backed proposal will appear here.</p>}
         </section>
 
         <section className="repair-panel repair-panel-action" aria-labelledby="repair-title">
           <p className="panel-kicker">03</p>
           <h2 id="repair-title">Proposed repair</h2>
-          <p className="diff-label">One selector literal in the test file</p>
-          <pre className="selector-diff" aria-label="Selector change from sign-in-button to sign-in-button-v2"><code>
-            <span className="diff-remove">− {staticRepairRun.failure.selector}</span>
-            <span className="diff-add">+ {staticRepairRun.proposal.replacementSelector}</span>
-          </code></pre>
-          <button
-            className="approval-button"
-            type="button"
-            disabled={!isAwaitingApproval}
-            onClick={showStaticPreviewNotice}
-          >
-            Approve &amp; rerun
-          </button>
-          <p className="approval-hint">No file has changed. Approval is required before patching.</p>
-          <p className="static-notice" role="status" aria-live="polite">{notice}</p>
+          {run?.failure && run.proposal ? (
+            <>
+              <p className="diff-label">One selector literal in the test file</p>
+              <pre className="selector-diff" aria-label="Proposed selector change"><code>
+                <span className="diff-remove">− {run.failure.selector}</span>
+                <span className="diff-add">+ {run.proposal.replacementSelector}</span>
+              </code></pre>
+              <button className="approval-button" type="button" disabled={!canApprove} onClick={approveRepair}>
+                {isSubmitting && run.status === "awaitingApproval" ? "Approving…" : "Approve & rerun"}
+              </button>
+              <p className="approval-hint">No file has changed. Approval is required before patching.</p>
+            </>
+          ) : (
+            <>
+              <p className="empty-panel-copy">The proposal remains read-only until you explicitly approve it.</p>
+              <button className="approval-button" type="button" disabled={isSubmitting} onClick={startRepair}>
+                {isSubmitting ? "Starting repair…" : "Start repair"}
+              </button>
+            </>
+          )}
+          {(requestError || run?.error) && <p className="static-notice repair-error" role="alert">{requestError || run?.error}</p>}
         </section>
       </div>
 
@@ -108,12 +143,10 @@ export default function RepairConsole() {
           <h2 id="timeline-title">Verification timeline</h2>
         </div>
         <ol>
-          {timelineSteps.map(([label, state]) => (
-            <li key={label} className={`timeline-${state}`}>
-              <span aria-hidden="true">{state === "complete" ? "✓" : state === "active" ? "●" : "○"}</span>
-              {label}
-            </li>
-          ))}
+          {timelineSteps.map(([label, stepStatus]) => {
+            const state = timelineState(status, stepStatus);
+            return <li key={label} className={`timeline-${state}`}><span aria-hidden="true">{state === "complete" ? "✓" : state === "active" ? "●" : "○"}</span>{label}</li>;
+          })}
         </ol>
       </section>
     </section>

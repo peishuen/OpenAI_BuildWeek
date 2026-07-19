@@ -3,17 +3,16 @@
 */
 import { expect, test } from "@playwright/test";
 
-test("shows a reviewable static repair proposal", async ({ page }) => {
+test("shows a repair run ready to start", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Repair Console" })).toBeVisible();
-  await expect(page.getByText("#sign-in-button", { exact: true })).toBeVisible();
-  await expect(page.getByText(/#sign-in-button-v2/)).toBeVisible();
-  const approvalButton = page.getByRole("button", { name: "Approve & rerun" });
-  await expect(approvalButton).toBeEnabled();
+  await expect(page.getByText("Start a repair run to capture the known failing test.")).toBeVisible();
+  const startButton = page.getByRole("button", { name: "Start repair" });
+  await expect(startButton).toBeEnabled();
   await page.keyboard.press("Tab");
-  await expect(approvalButton).toBeFocused();
+  await expect(startButton).toBeFocused();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
   await expect.poll(() => page.evaluate(() => {
     const console = document.querySelector(".repair-console");
@@ -27,6 +26,18 @@ test("shows a reviewable static repair proposal", async ({ page }) => {
     if (!console || !timeline) return false;
     return timeline.getBoundingClientRect().bottom >= console.getBoundingClientRect().bottom - 24;
   })).toBe(true);
+});
+
+test("reports a safe repair failure when the target test is already green", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Start repair" }).click();
+
+  await expect(page.getByRole("alert")).toHaveText("The repair target unexpectedly passed.");
+  await expect(page.getByRole("button", { name: "Start repair" })).toBeEnabled();
+  await expect.poll(() => page.getByRole("alert").evaluate((message) => (
+    message.scrollWidth <= message.clientWidth
+  ))).toBe(true);
 });
 
 test("keeps the dashboard and controlled login fixture on separate pages", async ({ page }) => {
@@ -67,7 +78,7 @@ test("signs in with the repair-target selector @repair-target", async ({ page })
 
   await page.getByLabel("Email").fill("demo@example.com");
   await page.getByLabel("Password").fill("password123");
-  await page.locator("#sign-in-button").click();
+  await page.locator("#sign-in-button-v2").click();
 
   await expect(page.locator(".toast[role='status']")).toHaveText("Success: Signed in successfully.");
 });
