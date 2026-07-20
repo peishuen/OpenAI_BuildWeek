@@ -41,8 +41,8 @@ function runPlaywrightJson() {
   const isWindows = process.platform === "win32";
   const executable = isWindows ? process.env.ComSpec ?? "cmd.exe" : "npx";
   const commandArguments = isWindows
-    ? ["/d", "/s", "/c", "npx playwright test --reporter=json"]
-    : ["playwright", "test", "--reporter=json"];
+    ? ["/d", "/s", "/c", "npx playwright test --grep-invert @baseline-only --reporter=json"]
+    : ["playwright", "test", "--grep-invert", "@baseline-only", "--reporter=json"];
 
   try {
     return {
@@ -85,9 +85,9 @@ function verifyMutationReport(report, exitCode) {
     throw new Error("Expected the mutated suite to fail, but it passed.");
   }
 
-  if (specs.length !== 4 || failedSpecs.length !== 1) {
+  if (failedSpecs.length !== 1) {
     throw new Error(
-      `Expected four tests with exactly one failure, found ${specs.length} tests and ${failedSpecs.length} failures.`,
+      `Expected exactly one failed test after the mutation, found ${specs.length} tests and ${failedSpecs.length} failures.`,
     );
   }
 

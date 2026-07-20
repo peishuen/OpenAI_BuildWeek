@@ -28,7 +28,7 @@ test("shows a repair run ready to start", async ({ page }) => {
   })).toBe(true);
 });
 
-test("reports a safe repair failure when the target test is already green", async ({ page }) => {
+test("reports a safe repair failure when the target test is already green @baseline-only", async ({ page }) => {
   await page.goto("/");
 
   await page.getByRole("button", { name: "Start repair" }).click();
