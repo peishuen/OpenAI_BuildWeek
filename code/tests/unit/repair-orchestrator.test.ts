@@ -4,9 +4,8 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { RepairOrchestrator } from "../../src/repair-orchestrator";
-import { ProposalProviderError } from "../../src/openai-proposal-provider";
 import type { PlaywrightRunResult, PlaywrightTestRunner } from "../../src/playwright-test-runner";
-import type { ProposalProvider } from "../../src/proposal-provider";
+import { ProposalProviderError, type ProposalProvider } from "../../src/proposal-provider";
 import { validRepairProposal } from "../fixtures/repair-proposals";
 import { targetFailureReport } from "../fixtures/playwright-reports";
 
@@ -159,7 +158,7 @@ describe("RepairOrchestrator", () => {
       projectRoot: workspace.projectRoot,
       runner,
       proposalProvider: {
-        propose: async () => { throw new ProposalProviderError("A server-only OpenAI API key is required for live proposals."); },
+        propose: async () => { throw new ProposalProviderError("A server-only Qwen API key is required for live proposals."); },
       },
       recordedDomSnapshot: '<button id="sign-in-button-v2">Sign in</button>',
       createRunId: () => "run-1",
@@ -169,7 +168,7 @@ describe("RepairOrchestrator", () => {
 
     expect(failed).toMatchObject({
       status: "failed",
-      error: "A server-only OpenAI API key is required for live proposals.",
+      error: "A server-only Qwen API key is required for live proposals.",
     });
     await expect(readFile(workspace.testPath, "utf8")).resolves.toBe(originalSource);
   });

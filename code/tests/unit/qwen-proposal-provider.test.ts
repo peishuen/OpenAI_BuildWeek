@@ -86,6 +86,17 @@ describe("QwenProposalProvider", () => {
     );
   });
 
+  it("returns a safe error when Qwen returns JSON that does not match the proposal schema", async () => {
+    const provider = new QwenProposalProvider({
+      apiKey: "test-key",
+      client: createClient(JSON.stringify({ proposed_selector: "#sign-in-button-v2" })),
+    });
+
+    await expect(provider.propose(failure)).rejects.toEqual(
+      new ProposalProviderError("The live repair proposal did not match the expected schema. Try again or use the fixture proposal."),
+    );
+  });
+
   it("returns a safe error when the request times out", async () => {
     const client: QwenChatCompletionsClient = {
       chat: {

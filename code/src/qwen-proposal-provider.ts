@@ -40,6 +40,11 @@ function promptFor(failure: FailureContext) {
       "Return only the requested JSON object.",
       "Do not propose code, file paths, commands, or application changes.",
     ],
+    outputSchema: {
+      replacementSelector: "A non-empty CSS selector string.",
+      diagnosis: "A concise explanation of the selector failure.",
+      evidence: "A concise fact grounded in the supplied failure context.",
+    },
     failure: {
       selector: failure.selector,
       errorExcerpt: failure.errorExcerpt,
@@ -90,8 +95,14 @@ export class QwenProposalProvider implements ProposalProvider {
       }
 
       try {
-        return RepairProposalSchema.parse(JSON.parse(content));
-      } catch {
+        const parsed = JSON.parse(content);
+        const validation = RepairProposalSchema.safeParse(parsed);
+        if (!validation.success) {
+          throw new ProposalProviderError("The live repair proposal did not match the expected schema. Try again or use the fixture proposal.");
+        }
+        return validation.data;
+      } catch (error) {
+        if (error instanceof ProposalProviderError) throw error;
         throw new ProposalProviderError("The live repair proposal was not valid JSON. Try again or use the fixture proposal.");
       }
     } catch (error) {

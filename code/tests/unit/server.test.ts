@@ -18,7 +18,7 @@ describe("getHealthStatus", () => {
   it("returns a safe error when a real server route throws unexpectedly", async () => {
     // Create a controller that simulates an unexpected server-only failure
     const controller: RepairRunController = {
-      start: async () => { throw new Error("OPENAI_API_KEY=not-for-the-browser"); },
+      start: async () => { throw new Error("QWEN_API_KEY=not-for-the-browser"); },
       getRun: (): Readonly<RepairRun> | undefined => undefined,
       approve: async () => undefined,
     };

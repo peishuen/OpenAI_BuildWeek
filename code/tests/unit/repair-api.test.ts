@@ -119,7 +119,7 @@ describe("repair run API", () => {
   it("hides unexpected internal errors from API clients", async () => {
     // Throw an error containing text that must never reach the browser
     const controller: RepairRunController = {
-      start: async () => { throw new Error("OPENAI_API_KEY=not-for-the-browser"); },
+      start: async () => { throw new Error("QWEN_API_KEY=not-for-the-browser"); },
       getRun: () => undefined,
       approve: async () => undefined,
     };
