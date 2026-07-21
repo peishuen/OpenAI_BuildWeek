@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { approveRepairRun, startRepairRun, subscribeToRepairRun } from "./repair-client";
+import { approvalHintFor } from "./repair-console-status";
 import type { RepairRun, RunStatus } from "./repair";
 
 const timelineSteps: Array<[string, RunStatus]> = [
@@ -69,6 +70,7 @@ export default function RepairConsole() {
 
   const canApprove = run?.status === "awaitingApproval" && !isSubmitting;
   const status = run?.status;
+  const approvalHint = approvalHintFor(status);
 
   return (
     <section className="repair-console" aria-labelledby="repair-console-title">
@@ -123,7 +125,7 @@ export default function RepairConsole() {
               <button className="approval-button" type="button" disabled={!canApprove} onClick={approveRepair}>
                 {isSubmitting && run.status === "awaitingApproval" ? "Approving…" : "Approve & rerun"}
               </button>
-              <p className="approval-hint">No file has changed. Approval is required before patching.</p>
+              {approvalHint && <p className="approval-hint">{approvalHint}</p>}
             </>
           ) : (
             <>
