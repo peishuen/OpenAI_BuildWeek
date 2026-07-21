@@ -28,7 +28,18 @@ async function replaceExactlyOnce(from, to, action) {
 }
 
 async function applyMutation() {
-  await replaceExactlyOnce(baselineId, mutatedId, "apply the selector mutation");
+  const source = await readFile(loginPagePath, "utf8");
+  const hasBaseline = countOccurrences(source, baselineId) === 1;
+  const hasMutated = countOccurrences(source, mutatedId) === 1;
+
+  if (hasBaseline && !hasMutated) {
+    await replaceExactlyOnce(baselineId, mutatedId, "apply the selector mutation");
+  } else if (hasMutated && !hasBaseline) {
+    await replaceExactlyOnce(mutatedId, baselineId, "apply the selector mutation");
+  } else {
+    throw new Error("Cannot apply the selector mutation: expected exactly one known sign-in button ID.");
+  }
+
   console.log("Applied the selector mutation.");
 }
 
@@ -112,7 +123,8 @@ async function verifyMutation() {
     verifyMutationReport(report, exitCode);
     console.log("Verified that only the @repair-target test fails after mutation.");
   } finally {
-    await resetMutation();
+    await applyMutation();
+    console.log("Restored the previous selector state.");
   }
 }
 

@@ -18,7 +18,7 @@ export type RepairOrchestratorOptions = {
   projectRoot: string;
   runner: PlaywrightTestRunner;
   proposalProvider: ProposalProvider;
-  recordedDomSnapshot: string;
+  recordedDomSnapshot: string | ((selector: string) => string);
   createRunId?: () => string;
   onRunUpdate?: (run: RepairRun) => void;
 };
@@ -61,7 +61,10 @@ export class RepairOrchestrator {
         return this.fail(stored, extracted.message);
       }
 
-      const failure = createFailureContext({ ...extracted.failure, domSnapshot: this.options.recordedDomSnapshot });
+      const domSnapshot = typeof this.options.recordedDomSnapshot === "function"
+        ? this.options.recordedDomSnapshot(extracted.failure.selector)
+        : this.options.recordedDomSnapshot;
+      const failure = createFailureContext({ ...extracted.failure, domSnapshot });
       const proposal = await this.options.proposalProvider.propose(failure);
       const validation = await validateRepairProposal(proposal, failure, { projectRoot: this.options.projectRoot });
       if (!validation.ok) {
