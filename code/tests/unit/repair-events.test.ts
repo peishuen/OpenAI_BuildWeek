@@ -5,7 +5,7 @@ import { RepairEventStore } from "../../src/repair-events";
 
 function createRun(status: RepairRun["status"]): RepairRun {
   // Return the smallest run object needed to create a progress event.
-  return { id: "run-1", status };
+  return { id: "run-1", proposalMode: "fixture", status };
 }
 
 describe("RepairEventStore", () => {

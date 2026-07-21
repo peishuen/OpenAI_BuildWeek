@@ -16,7 +16,7 @@ The product demonstrates a narrowly scoped developer-tool workflow, not a hosted
 4. The user selects **Start repair**. The service runs the failing target test, captures safe evidence, and requests a proposal from Qwen.
 5. The console displays the failed selector, concise evidence, and one selector diff. No test file has changed.
 6. The user selects **Approve & rerun**. The service applies exactly one validated selector literal, runs the target test, then the full suite.
-7. The console reports either a completed repair or a safe failure. **Reset sandbox** is available only for recovery or rehearsal.
+7. The console reports either a completed repair or a safe failure. The user can select **Simulate selector regression** again to toggle the fixed fixture and begin the next review cycle; **Reset sandbox** remains available for recovery or rehearsal.
 
 ### Success criteria
 
@@ -35,7 +35,7 @@ The product demonstrates a narrowly scoped developer-tool workflow, not a hosted
 - The allowed repair remains one CSS-selector literal in `tests/e2e/login.spec.ts`, subject to the existing proposal validation and restoration policy.
 - Qwen is selected when valid Qwen configuration is present. The browser must never receive credentials.
 - The UI preselects **Live Qwen** when it is configured. The user can explicitly select **Offline fixture fallback** for a deterministic rehearsal; the selected provider is visible throughout the run.
-- **Reset sandbox** is available only before approval or after a failed repair. A completed repair is already a coherent state, so reset is disabled rather than creating a new regression.
+- **Reset sandbox** is available only before approval or after a failed repair. After a completed repair, **Simulate selector regression** toggles the fixed fixture to create the next bounded regression; it does not reset the completed repair.
 
 ## Provider behavior
 
@@ -112,7 +112,7 @@ export function canStartLiveRepair(mode: ProposalMode, hasQwenConfig: boolean) {
 - **Unit tests:** provider selection, sandbox mutation state, invalid mutation requests, and the existing Qwen error/validation behavior.
 - **API tests:** the simulation and reset endpoints enforce the fixture-only boundary and return safe state; provider mode is disclosed without secrets.
 - **UI tests:** controls reflect simulation state, present a Qwen/fixture label, prevent duplicate requests, and make reset a recovery action.
-- **E2E/manual rehearsal:** exercise one live-Qwen repair if credentials are configured; exercise offline fallback separately; in each case verify no test-file write before approval and a green target/full suite after successful approval.
+- **E2E/manual rehearsal:** exercise one live-Qwen repair if credentials are configured; exercise offline fallback separately; in each case verify no test-file write before approval and a green target/full suite after successful approval. Browser-control checks that mutate the sandbox are excluded from the active-repair full-suite run.
 - **Quality gate:** `npm run lint`, `npm run typecheck`, `npm run test:unit`, `npm run test:e2e`, and `npm run build` pass from the restored baseline.
 
 ## Boundaries

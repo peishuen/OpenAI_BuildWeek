@@ -64,7 +64,47 @@ class FixtureProvider implements ProposalProvider {
   }
 }
 
+class TrackingProvider implements ProposalProvider {
+  calls = 0;
+
+  constructor(private readonly proposal: unknown = validRepairProposal) {}
+
+  async propose() {
+    this.calls += 1;
+    return this.proposal;
+  }
+}
+
+function providers(provider: ProposalProvider) {
+  return { fixture: provider, qwen: provider };
+}
+
 describe("RepairOrchestrator", () => {
+  it("selects a provider per run and records only its safe mode", async () => {
+    const workspace = await createWorkspace();
+    const runner = new FakeRunner([run(1, targetFailureReport), run(1, targetFailureReport)], run(0));
+    const fixtureProvider = new TrackingProvider();
+    const qwenProvider = new TrackingProvider();
+    let nextRunId = 1;
+    const orchestrator = new RepairOrchestrator({
+      projectRoot: workspace.projectRoot,
+      runner,
+      proposalProviders: { fixture: fixtureProvider, qwen: qwenProvider },
+      defaultProposalMode: "qwen",
+      recordedDomSnapshot: '<button id="sign-in-button-v2">Sign in</button>',
+      createRunId: () => `run-${nextRunId++}`,
+    });
+
+    const fixtureRun = await orchestrator.start("fixture");
+    const qwenRun = await orchestrator.start();
+
+    expect(fixtureRun).toMatchObject({ status: "awaitingApproval", proposalMode: "fixture" });
+    expect(qwenRun).toMatchObject({ status: "awaitingApproval", proposalMode: "qwen" });
+    expect(fixtureProvider.calls).toBe(1);
+    expect(qwenProvider.calls).toBe(1);
+    await expect(readFile(workspace.testPath, "utf8")).resolves.toBe(originalSource);
+  });
+
   it("publishes each repair status in workflow order", async () => {
     const workspace = await createWorkspace();
     const runner = new FakeRunner([run(1, targetFailureReport), run(0)], run(0));
@@ -72,7 +112,8 @@ describe("RepairOrchestrator", () => {
     const orchestrator = new RepairOrchestrator({
       projectRoot: workspace.projectRoot,
       runner,
-      proposalProvider: new FixtureProvider(),
+      proposalProviders: providers(new FixtureProvider()),
+      defaultProposalMode: "fixture",
       recordedDomSnapshot: '<button id="sign-in-button-v2">Sign in</button>',
       createRunId: () => "run-1",
       onRunUpdate: (updatedRun) => statuses.push(updatedRun.status),
@@ -98,7 +139,8 @@ describe("RepairOrchestrator", () => {
     const orchestrator = new RepairOrchestrator({
       projectRoot: workspace.projectRoot,
       runner,
-      proposalProvider: new FixtureProvider(),
+      proposalProviders: providers(new FixtureProvider()),
+      defaultProposalMode: "fixture",
       recordedDomSnapshot: '<button id="sign-in-button-v2">Sign in</button>',
       createRunId: () => "run-1",
     });
@@ -122,7 +164,8 @@ describe("RepairOrchestrator", () => {
     const orchestrator = new RepairOrchestrator({
       projectRoot: workspace.projectRoot,
       runner,
-      proposalProvider: new FixtureProvider(),
+      proposalProviders: providers(new FixtureProvider()),
+      defaultProposalMode: "fixture",
       recordedDomSnapshot: '<button id="sign-in-button-v2">Sign in</button>',
       createRunId: () => "run-1",
     });
@@ -140,7 +183,8 @@ describe("RepairOrchestrator", () => {
     const orchestrator = new RepairOrchestrator({
       projectRoot: workspace.projectRoot,
       runner,
-      proposalProvider: new FixtureProvider({ replacementSelector: "[", diagnosis: "bad", evidence: "bad" }),
+      proposalProviders: providers(new FixtureProvider({ replacementSelector: "[", diagnosis: "bad", evidence: "bad" })),
+      defaultProposalMode: "fixture",
       recordedDomSnapshot: '<button id="sign-in-button-v2">Sign in</button>',
       createRunId: () => "run-1",
     });
@@ -157,9 +201,13 @@ describe("RepairOrchestrator", () => {
     const orchestrator = new RepairOrchestrator({
       projectRoot: workspace.projectRoot,
       runner,
-      proposalProvider: {
-        propose: async () => { throw new ProposalProviderError("A server-only Qwen API key is required for live proposals."); },
+      proposalProviders: {
+        fixture: new FixtureProvider(),
+        qwen: {
+          propose: async () => { throw new ProposalProviderError("A server-only Qwen API key is required for live proposals."); },
+        },
       },
+      defaultProposalMode: "qwen",
       recordedDomSnapshot: '<button id="sign-in-button-v2">Sign in</button>',
       createRunId: () => "run-1",
     });

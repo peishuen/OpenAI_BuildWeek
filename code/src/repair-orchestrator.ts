@@ -3,8 +3,8 @@ import { randomUUID } from "node:crypto";
 import { createFailureContext } from "./failure-context";
 import { applyValidatedPatch, restorePatch, type PatchSnapshot } from "./test-patcher";
 import { validateRepairProposal, type ValidatedPatchPlan } from "./proposal-validator";
-import { transitionRun, type RepairRun } from "./repair";
-import { ProposalProviderError, type ProposalProvider } from "./proposal-provider";
+import { transitionRun, type ProposalMode, type RepairRun } from "./repair";
+import { ProposalProviderError, type ProposalProviders } from "./proposal-provider";
 import { extractRepairTargetFailure, type PlaywrightTestRunner } from "./playwright-test-runner";
 
 type StoredRun = {
@@ -16,7 +16,8 @@ type StoredRun = {
 export type RepairOrchestratorOptions = {
   projectRoot: string;
   runner: PlaywrightTestRunner;
-  proposalProvider: ProposalProvider;
+  proposalProviders: ProposalProviders;
+  defaultProposalMode: ProposalMode;
   recordedDomSnapshot: string | ((selector: string) => string);
   createRunId?: () => string;
   onRunUpdate?: (run: RepairRun) => void;
@@ -33,6 +34,7 @@ function copyRun(run: RepairRun): RepairRun {
 export class RepairOrchestrator {
   private readonly runs = new Map<string, StoredRun>();
   private readonly createRunId: () => string;
+  private latestRunId: string | undefined;
 
   constructor(private readonly options: RepairOrchestratorOptions) {
     this.createRunId = options.createRunId ?? randomUUID;
@@ -43,10 +45,16 @@ export class RepairOrchestrator {
     return stored ? copyRun(stored.run) : undefined;
   }
 
-  async start(): Promise<RepairRun> {
-    const run: RepairRun = { id: this.createRunId(), status: "capturingFailure" };
+  getLatestRun(): Readonly<RepairRun> | undefined {
+    return this.latestRunId ? this.getRun(this.latestRunId) : undefined;
+  }
+
+  async start(proposalMode: ProposalMode = this.options.defaultProposalMode): Promise<RepairRun> {
+    const run: RepairRun = { id: this.createRunId(), proposalMode, status: "capturingFailure" };
     const stored: StoredRun = { run };
+    const proposalProvider = this.options.proposalProviders[proposalMode];
     this.runs.set(run.id, stored);
+    this.latestRunId = run.id;
     this.publish(run);
 
     try {
@@ -64,7 +72,7 @@ export class RepairOrchestrator {
         ? this.options.recordedDomSnapshot(extracted.failure.selector)
         : this.options.recordedDomSnapshot;
       const failure = createFailureContext({ ...extracted.failure, domSnapshot });
-      const proposal = await this.options.proposalProvider.propose(failure);
+      const proposal = await proposalProvider.propose(failure);
       const validation = await validateRepairProposal(proposal, failure, { projectRoot: this.options.projectRoot });
       if (!validation.ok) {
         return this.fail(stored, validation.message);

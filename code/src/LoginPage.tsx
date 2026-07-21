@@ -42,7 +42,7 @@ export default function LoginPage() {
           <label htmlFor="password">Password</label>
           <input id="password" name="password" type="password" required />
 
-          <button id="sign-in-button" type="submit">
+          <button id="sign-in-button-v2" type="submit">
             Sign in
           </button>
         </form>

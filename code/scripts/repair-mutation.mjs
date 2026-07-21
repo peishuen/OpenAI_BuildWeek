@@ -1,50 +1,23 @@
 import { execFileSync } from "node:child_process";
-import { readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resetSandboxFixture, toggleSandboxFixture } from "../src/sandbox-fixture.ts";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(scriptDirectory, "..");
-const loginPagePath = resolve(projectRoot, "src/LoginPage.tsx");
-const baselineId = 'id="sign-in-button"';
-const mutatedId = 'id="sign-in-button-v2"';
 
-function countOccurrences(source, value) {
-  return source.split(value).length - 1;
-}
-
-async function replaceExactlyOnce(from, to, action) {
-  const source = await readFile(loginPagePath, "utf8");
-  const fromCount = countOccurrences(source, from);
-  const toCount = countOccurrences(source, to);
-
-  if (fromCount !== 1 || toCount !== 0) {
-    throw new Error(
-      `Cannot ${action}: expected one ${JSON.stringify(from)} and no ${JSON.stringify(to)} in src/LoginPage.tsx.`,
-    );
-  }
-
-  await writeFile(loginPagePath, source.replace(from, to), "utf8");
+function requireSuccess(result) {
+  if (!result.ok) throw new Error(result.message);
+  return result;
 }
 
 async function applyMutation() {
-  const source = await readFile(loginPagePath, "utf8");
-  const hasBaseline = countOccurrences(source, baselineId) === 1;
-  const hasMutated = countOccurrences(source, mutatedId) === 1;
-
-  if (hasBaseline && !hasMutated) {
-    await replaceExactlyOnce(baselineId, mutatedId, "apply the selector mutation");
-  } else if (hasMutated && !hasBaseline) {
-    await replaceExactlyOnce(mutatedId, baselineId, "apply the selector mutation");
-  } else {
-    throw new Error("Cannot apply the selector mutation: expected exactly one known sign-in button ID.");
-  }
-
-  console.log("Applied the selector mutation.");
+  const result = requireSuccess(await toggleSandboxFixture());
+  console.log(`Applied the selector mutation (${result.state}).`);
 }
 
 async function resetMutation() {
-  await replaceExactlyOnce(mutatedId, baselineId, "reset the selector mutation");
+  requireSuccess(await resetSandboxFixture());
   console.log("Restored the selector baseline.");
 }
 

@@ -18,6 +18,10 @@ export const RunStatusSchema = z.enum([
 
 export type RunStatus = z.infer<typeof RunStatusSchema>;
 
+export const ProposalModeSchema = z.enum(["qwen", "fixture"]);
+
+export type ProposalMode = z.infer<typeof ProposalModeSchema>;
+
 // describe the useful information captured when a Playwright test fails
 export const FailureContextSchema = z.object({
     selector: z.string().min(1),
@@ -41,6 +45,7 @@ export type RepairProposal = z.infer<typeof RepairProposalSchema>;
 // store the complete state of one repair attempt
 export type RepairRun = {
   id: string;
+  proposalMode: ProposalMode;
   status: RunStatus;
   failure?: FailureContext;
   proposal?: RepairProposal;

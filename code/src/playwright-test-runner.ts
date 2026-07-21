@@ -93,7 +93,8 @@ export class NodePlaywrightTestRunner implements PlaywrightTestRunner {
   }
 
   runSuite() {
-    return this.run(["test", "--reporter=json"]);
+    // Dashboard-only checks intentionally mutate or assert pre-regression state, so they cannot verify an active repaired fixture.
+    return this.run(["test", "--grep-invert", "@baseline-only|@sandbox-only", "--reporter=json"]);
   }
 
   private async run(args: readonly string[]): Promise<PlaywrightRunResult> {

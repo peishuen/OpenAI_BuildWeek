@@ -7,7 +7,7 @@ import { createServer } from "node:http";
 import { describe, expect, it } from "vitest";
 import type { RepairRun } from "../../src/repair";
 import { RepairEventStore } from "../../src/repair-events";
-import type { RepairRunController } from "../../src/repair-routes";
+import type { ProviderAvailability, RepairRunController, SandboxController } from "../../src/repair-routes";
 import { createApp, getHealthStatus } from "../../src/server";
 
 describe("getHealthStatus", () => {
@@ -20,16 +20,31 @@ describe("getHealthStatus", () => {
     const controller: RepairRunController = {
       start: async () => { throw new Error("QWEN_API_KEY=not-for-the-browser"); },
       getRun: (): Readonly<RepairRun> | undefined => undefined,
+      getLatestRun: (): Readonly<RepairRun> | undefined => undefined,
       approve: async () => undefined,
     };
-    const server = createServer(createApp(controller, new RepairEventStore()));
+    const sandbox: SandboxController = {
+      getState: async () => ({ ok: true, state: "baseline" }),
+      simulate: async () => ({ ok: true, state: "alternate" }),
+      reset: async () => ({ ok: true, state: "baseline" }),
+    };
+    const providers: ProviderAvailability = {
+      defaultMode: "fixture",
+      qwen: { available: false, message: "Live Qwen is not configured. Use the offline fixture fallback." },
+      fixture: { available: true },
+    };
+    const server = createServer(createApp(controller, new RepairEventStore(), sandbox, providers));
     server.listen(0, "127.0.0.1");
     await once(server, "listening");
     const address = server.address();
     if (!address || typeof address === "string") throw new Error("Expected a TCP server address.");
 
     try {
-      const response = await fetch(`http://127.0.0.1:${address.port}/api/repair-runs`, { method: "POST" });
+      const response = await fetch(`http://127.0.0.1:${address.port}/api/repair-runs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proposalMode: "fixture" }),
+      });
 
       expect(response.status).toBe(500);
       await expect(response.json()).resolves.toEqual({

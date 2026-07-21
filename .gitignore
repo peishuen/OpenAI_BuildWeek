@@ -1,2 +1,6 @@
 # Keep local credentials out of source control.
 qwen_api_key/
+
+# Locally installed agent skills.
+.agents/skills/
+skills-lock.json

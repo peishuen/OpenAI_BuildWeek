@@ -1,4 +1,4 @@
-import type { RunStatus } from "./repair";
+import type { ProposalMode, RunStatus } from "./repair";
 
 export function approvalHintFor(status: RunStatus | undefined) {
   if (status === "awaitingApproval") {
@@ -11,4 +11,20 @@ export function approvalHintFor(status: RunStatus | undefined) {
     return "Approved repair applied successfully. Target test and full suite passed.";
   }
   return undefined;
+}
+
+export function canStartRepair(mode: ProposalMode, qwenAvailable: boolean, isBusy: boolean) {
+  return !isBusy && (mode === "fixture" || qwenAvailable);
+}
+
+export function canSimulateRegression(
+  state: "baseline" | "alternate" | undefined,
+  isBusy: boolean,
+  runStatus: RunStatus | undefined,
+) {
+  return state !== undefined && !isBusy && (runStatus === undefined || runStatus === "completed" || runStatus === "failed");
+}
+
+export function canResetSandbox(canReset: boolean, isBusy: boolean) {
+  return canReset && !isBusy;
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import OpenAI from "openai";
 
 import {
   QwenProposalProvider,
@@ -109,6 +110,57 @@ describe("QwenProposalProvider", () => {
 
     await expect(provider.propose(failure)).rejects.toEqual(
       new ProposalProviderError("The live repair proposal timed out. Try again or use the fixture proposal."),
+    );
+  });
+
+  it("reports an allowlisted authentication failure without exposing provider details", async () => {
+    const client: QwenChatCompletionsClient = {
+      chat: {
+        completions: {
+          create: async () => {
+            throw Object.assign(new Error("Authorization: Bearer secret-value"), { status: 401 });
+          },
+        },
+      },
+    };
+    const provider = new QwenProposalProvider({ apiKey: "test-key", client });
+
+    await expect(provider.propose(failure)).rejects.toEqual(
+      new ProposalProviderError("Live Qwen rejected authentication (HTTP 401). Check the server API key and its configured region."),
+    );
+  });
+
+  it("preserves SDK connection timeouts as a timeout failure", async () => {
+    const client: QwenChatCompletionsClient = {
+      chat: {
+        completions: {
+          create: async () => { throw new OpenAI.APIConnectionTimeoutError(); },
+        },
+      },
+    };
+    const provider = new QwenProposalProvider({ apiKey: "test-key", client });
+
+    await expect(provider.propose(failure)).rejects.toEqual(
+      new ProposalProviderError("The live repair proposal timed out. Try again or use the fixture proposal."),
+    );
+  });
+
+  it("handles a hostile error object without leaking its details", async () => {
+    const client: QwenChatCompletionsClient = {
+      chat: {
+        completions: {
+          create: async () => {
+            throw new Proxy({}, {
+              has: () => { throw new Error("secret provider detail"); },
+            });
+          },
+        },
+      },
+    };
+    const provider = new QwenProposalProvider({ apiKey: "test-key", client });
+
+    await expect(provider.propose(failure)).rejects.toEqual(
+      new ProposalProviderError("The live repair proposal could not be generated. Check network access, then try again or use the fixture proposal."),
     );
   });
 });

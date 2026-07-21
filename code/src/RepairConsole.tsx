@@ -1,8 +1,21 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { approveRepairRun, startRepairRun, subscribeToRepairRun } from "./repair-client";
-import { approvalHintFor } from "./repair-console-status";
-import type { RepairRun, RunStatus } from "./repair";
+import {
+  approveRepairRun,
+  getSandboxStatus,
+  resetSandbox,
+  simulateRegression,
+  startRepairRun,
+  subscribeToRepairRun,
+  type SandboxStatus,
+} from "./repair-client";
+import {
+  approvalHintFor,
+  canResetSandbox,
+  canSimulateRegression,
+  canStartRepair,
+} from "./repair-console-status";
+import type { ProposalMode, RepairRun, RunStatus } from "./repair";
 
 const timelineSteps: Array<[string, RunStatus]> = [
   ["Failure captured", "capturingFailure"],
@@ -34,23 +47,76 @@ function timelineState(status: RunStatus | undefined, stepStatus: RunStatus) {
 
 export default function RepairConsole() {
   const [run, setRun] = useState<RepairRun>();
+  const [sandbox, setSandbox] = useState<SandboxStatus>();
+  const [proposalMode, setProposalMode] = useState<ProposalMode>();
   const [requestError, setRequestError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSandboxSubmitting, setIsSandboxSubmitting] = useState(false);
+
+  const refreshSandbox = useCallback(async () => {
+    try {
+      const status = await getSandboxStatus();
+      setSandbox(status);
+      setProposalMode((current) => current ?? status.providers.defaultMode);
+    } catch {
+      setRequestError("The sandbox status could not be loaded.");
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshSandbox();
+  }, [refreshSandbox]);
 
   useEffect(() => {
     if (!run?.id) return;
-    return subscribeToRepairRun(run.id, (event) => setRun(event.run));
-  }, [run?.id]);
+    return subscribeToRepairRun(run.id, (event) => {
+      setRun(event.run);
+      if (event.run.status === "awaitingApproval" || event.run.status === "failed" || event.run.status === "completed") {
+        void refreshSandbox();
+      }
+    });
+  }, [refreshSandbox, run?.id]);
 
   async function startRepair() {
+    if (!proposalMode) return;
     setIsSubmitting(true);
     setRequestError("");
     try {
-      setRun(await startRepairRun());
+      setRun(await startRepairRun(proposalMode));
+      await refreshSandbox();
     } catch {
       setRequestError("The repair service could not start a repair run.");
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function simulateSelectorRegression() {
+    setIsSandboxSubmitting(true);
+    setRequestError("");
+    try {
+      await simulateRegression();
+      // A new mutation starts a new review cycle; completed or failed run details no longer describe this state.
+      setRun(undefined);
+      await refreshSandbox();
+    } catch {
+      setRequestError("The selector regression could not be simulated.");
+    } finally {
+      setIsSandboxSubmitting(false);
+    }
+  }
+
+  async function resetSandboxWorkspace() {
+    setIsSandboxSubmitting(true);
+    setRequestError("");
+    try {
+      await resetSandbox();
+      setRun(undefined);
+      await refreshSandbox();
+    } catch {
+      setRequestError("The sandbox workspace could not be reset.");
+    } finally {
+      setIsSandboxSubmitting(false);
     }
   }
 
@@ -68,9 +134,15 @@ export default function RepairConsole() {
     }
   }
 
-  const canApprove = run?.status === "awaitingApproval" && !isSubmitting;
+  const isBusy = isSubmitting || isSandboxSubmitting;
+  const canApprove = run?.status === "awaitingApproval" && !isBusy;
   const status = run?.status;
   const approvalHint = approvalHintFor(status);
+  const canStart = proposalMode !== undefined
+    && canStartRepair(proposalMode, sandbox?.providers.qwen.available ?? false, isBusy)
+    && !run;
+  const canSimulate = canSimulateRegression(sandbox?.fixture.state, isBusy, status);
+  const canReset = canResetSandbox(sandbox?.canReset ?? false, isBusy);
 
   return (
     <section className="repair-console" aria-labelledby="repair-console-title">
@@ -85,8 +157,9 @@ export default function RepairConsole() {
         </p>
       </header>
 
-      <div className="repair-panel-grid">
-        <section className="repair-panel" aria-labelledby="failure-title">
+      <div className="repair-workspace">
+        <div className="repair-panel-grid">
+          <section className="repair-panel" aria-labelledby="failure-title">
           <p className="panel-kicker">01</p>
           <h2 id="failure-title">Failure</h2>
           {run?.failure ? (
@@ -96,9 +169,9 @@ export default function RepairConsole() {
               <div><dt>Error</dt><dd className="error-excerpt">{run.failure.errorExcerpt}</dd></div>
             </dl>
           ) : <p className="empty-panel-copy">Start a repair run to capture the known failing test.</p>}
-        </section>
+          </section>
 
-        <section className="repair-panel" aria-labelledby="diagnosis-title">
+          <section className="repair-panel" aria-labelledby="diagnosis-title">
           <p className="panel-kicker">02</p>
           <h2 id="diagnosis-title">Diagnosis</h2>
           {run?.proposal && run.failure ? (
@@ -110,11 +183,55 @@ export default function RepairConsole() {
               <pre className="dom-preview"><code>{run.failure.domSnapshot}</code></pre>
             </>
           ) : <p className="empty-panel-copy">A validated, evidence-backed proposal will appear here.</p>}
-        </section>
+          </section>
+        </div>
 
-        <section className="repair-panel repair-panel-action" aria-labelledby="repair-title">
+        <div className="repair-panel repair-panel-action">
+          <section className="repair-action-section" aria-labelledby="sandbox-title">
           <p className="panel-kicker">03</p>
-          <h2 id="repair-title">Proposed repair</h2>
+          <h2 id="sandbox-title">Sandbox workspace</h2>
+          <p className="sandbox-state" role="status">Fixture state: <strong>{sandbox?.fixture.state === "alternate" ? "selector regression simulated" : sandbox ? "baseline" : "checkingâ€¦"}</strong></p>
+          <fieldset className="provider-options">
+            <legend>Proposal source</legend>
+            <label htmlFor="proposal-mode-qwen">
+              <input
+                id="proposal-mode-qwen"
+                type="radio"
+                name="proposal-mode"
+                value="qwen"
+                checked={proposalMode === "qwen"}
+                disabled={!sandbox?.providers.qwen.available || isBusy || Boolean(run)}
+                onChange={() => setProposalMode("qwen")}
+              />
+              Live Qwen
+            </label>
+            <label htmlFor="proposal-mode-fixture">
+              <input
+                id="proposal-mode-fixture"
+                type="radio"
+                name="proposal-mode"
+                value="fixture"
+                checked={proposalMode === "fixture"}
+                disabled={isBusy || Boolean(run)}
+                onChange={() => setProposalMode("fixture")}
+              />
+              Offline fixture fallback
+            </label>
+          </fieldset>
+          {!sandbox?.providers.qwen.available && sandbox && <p className="provider-note">Live Qwen is unavailable: {sandbox.providers.qwen.message}</p>}
+          <div className="sandbox-actions">
+            <button type="button" className="secondary-button" disabled={!canSimulate} onClick={simulateSelectorRegression}>
+              {isSandboxSubmitting ? "Simulatingâ€¦" : "Simulate selector regression"}
+            </button>
+            <button type="button" className="secondary-button" disabled={!canReset} onClick={resetSandboxWorkspace}>
+              {isSandboxSubmitting ? "Resettingâ€¦" : "Reset sandbox"}
+            </button>
+          </div>
+          </section>
+          <div className="action-divider" />
+          <section className="repair-action-section" aria-labelledby="proposed-repair-title">
+          <p className="panel-kicker">04</p>
+          <h2 id="proposed-repair-title">Proposed repair</h2>
           {run?.failure && run.proposal ? (
             <>
               <p className="diff-label">One selector literal in the test file</p>
@@ -130,13 +247,14 @@ export default function RepairConsole() {
           ) : (
             <>
               <p className="empty-panel-copy">The proposal remains read-only until you explicitly approve it.</p>
-              <button className="approval-button" type="button" disabled={isSubmitting} onClick={startRepair}>
+              <button className="approval-button" type="button" disabled={!canStart} onClick={startRepair}>
                 {isSubmitting ? "Starting repair…" : "Start repair"}
               </button>
             </>
           )}
           {(requestError || run?.error) && <p className="static-notice repair-error" role="alert">{requestError || run?.error}</p>}
-        </section>
+          </section>
+        </div>
       </div>
 
       <section className="repair-timeline" aria-labelledby="timeline-title">

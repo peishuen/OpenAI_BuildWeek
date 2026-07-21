@@ -31,6 +31,57 @@ export type QwenProposalProviderOptions = {
 const DEFAULT_MODEL = "qwen3.7-plus-2026-05-26";
 const DEFAULT_TIMEOUT_MS = 15_000;
 
+function httpStatusFrom(error: unknown) {
+  if (typeof error !== "object" || error === null) return undefined;
+
+  try {
+    const status = Reflect.get(error, "status");
+    return typeof status === "number" && Number.isInteger(status) && status >= 400 && status <= 599
+      ? status
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isTimeoutFailure(error: unknown) {
+  try {
+    return error instanceof OpenAI.APIConnectionTimeoutError
+      || (error instanceof DOMException && (error.name === "AbortError" || error.name === "TimeoutError"));
+  } catch {
+    return false;
+  }
+}
+
+/* Return only an allowlisted HTTP classification; provider text can contain credentials or internals. */
+function safeRequestFailure(error: unknown) {
+  const status = httpStatusFrom(error);
+
+  if (status === 408 || status === 504) {
+    return new ProposalProviderError(`The live repair proposal timed out (HTTP ${status}). Try again or use the fixture proposal.`);
+  }
+  if (status === 401) {
+    return new ProposalProviderError("Live Qwen rejected authentication (HTTP 401). Check the server API key and its configured region.");
+  }
+  if (status === 403) {
+    return new ProposalProviderError("Live Qwen denied the request (HTTP 403). Check workspace access, model availability, and billing.");
+  }
+  if (status === 404) {
+    return new ProposalProviderError("Live Qwen reported the endpoint or model unavailable (HTTP 404). Check the base URL and model.");
+  }
+  if (status === 429) {
+    return new ProposalProviderError("Live Qwen is rate-limited or out of quota (HTTP 429). Wait, then check quota and billing.");
+  }
+  if (status !== undefined && status < 500) {
+    return new ProposalProviderError(`Live Qwen rejected the request (HTTP ${status}). Check the model and request configuration.`);
+  }
+  if (status !== undefined) {
+    return new ProposalProviderError(`Live Qwen is temporarily unavailable (HTTP ${status}). Try again or use the fixture proposal.`);
+  }
+
+  return new ProposalProviderError("The live repair proposal could not be generated. Check network access, then try again or use the fixture proposal.");
+}
+
 /* Build a data-only prompt from the already sanitized failure context and no secret values. */
 function promptFor(failure: FailureContext) {
   return JSON.stringify({
@@ -107,10 +158,10 @@ export class QwenProposalProvider implements ProposalProvider {
       }
     } catch (error) {
       if (error instanceof ProposalProviderError) throw error;
-      if (error instanceof DOMException && (error.name === "AbortError" || error.name === "TimeoutError")) {
+      if (isTimeoutFailure(error)) {
         throw new ProposalProviderError("The live repair proposal timed out. Try again or use the fixture proposal.");
       }
-      throw new ProposalProviderError("The live repair proposal could not be generated. Try again or use the fixture proposal.");
+      throw safeRequestFailure(error);
     }
   }
 }

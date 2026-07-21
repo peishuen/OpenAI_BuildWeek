@@ -22,6 +22,7 @@ describe("repair run state", () => {
         // create a run that has a proposal but is still waiting for approval
         const run: RepairRun = {
             id: "run-1",
+            proposalMode: "fixture",
             status: "awaitingApproval",
         };
 
@@ -40,6 +41,7 @@ describe("repair run state", () => {
         // start at the waiting-for-approval stage
         const waitingRun: RepairRun = {
             id: "run-1",
+            proposalMode: "fixture",
             status: "awaitingApproval",
         };
 

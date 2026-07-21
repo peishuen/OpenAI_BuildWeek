@@ -23,7 +23,7 @@
   align-items: start;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.85rem;
 }
 
 .eyebrow,
@@ -84,16 +84,24 @@
 
 .repair-panel-grid {
   display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.repair-workspace {
+  display: grid;
   flex: 1;
-  grid-template-columns: 0.9fr 1.1fr 1fr;
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1.45fr) minmax(20rem, 0.95fr);
+  gap: 0.75rem;
+  min-height: 0;
 }
 
 .repair-panel {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: 1rem;
+  padding: 0.8rem;
   border: 1px solid #d8e2ef;
   border-radius: 0.75rem;
   background: #f8fbff;
@@ -102,6 +110,125 @@
 .repair-panel-action {
   border-color: #b9d5ee;
   background: #f2f8fd;
+  padding: 0.75rem;
+}
+
+.repair-action-section {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.repair-action-section:first-of-type { flex: 0 0 auto; }
+
+.repair-action-section:last-of-type { flex: 1 0 auto; }
+
+.repair-panel-action .sandbox-state,
+.repair-panel-action .provider-note {
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+.repair-panel-action .provider-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.3rem 0.55rem;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+}
+
+.repair-panel-action .provider-options legend { grid-column: 1 / -1; }
+
+.repair-panel-action .sandbox-actions {
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.repair-panel-action .secondary-button {
+  min-height: 2.5rem;
+  padding: 0.4rem 0.3rem;
+  font-size: 0.75rem;
+}
+
+.repair-panel-action .approval-button {
+  min-height: 3rem;
+  margin-top: 0.55rem;
+}
+
+.sandbox-state,
+.provider-note {
+  margin: 0.35rem 0 0;
+  color: #52657d;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.sandbox-state { color: #243750; }
+
+.repair-panel-action .sandbox-state {
+  padding: 0.4rem 0.5rem;
+  border-left: 3px solid #38bdf8;
+  border-radius: 0.25rem;
+  background: #e8f5ff;
+}
+
+.provider-options {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.45rem 0 0;
+  padding: 0;
+  border: 0;
+  color: #243750;
+  font-size: 0.85rem;
+}
+
+.provider-options legend {
+  margin-bottom: 0.3rem;
+  font-weight: 800;
+}
+
+.provider-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.provider-options input {
+  box-sizing: border-box;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  accent-color: #0c5a91;
+}
+
+.sandbox-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.45rem;
+}
+
+.secondary-button {
+  padding: 0.55rem 0.45rem;
+  border: 1px solid #8cb9db;
+  border-radius: 0.5rem;
+  color: #0c5a91;
+  background: #fff;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.secondary-button:hover:not(:disabled) { background: #e0f2fe; }
+.secondary-button:focus-visible { outline: 3px solid #7dd3fc; outline-offset: 2px; }
+.secondary-button:disabled { cursor: not-allowed; opacity: 0.55; }
+
+.action-divider {
+  flex: 0 0 1px;
+  height: 1px;
+  margin: 0.5rem 0;
+  background: #c8dcef;
 }
 
 .detail-list {
@@ -160,7 +287,6 @@ code {
 
 .dom-preview,
 .selector-diff {
-  overflow-x: auto;
   margin: 0;
   padding: 0.65rem;
   border-radius: 0.5rem;
@@ -169,6 +295,13 @@ code {
   font-size: 0.75rem;
   line-height: 1.55;
   white-space: pre-wrap;
+}
+
+.dom-preview { overflow-x: auto; }
+
+.selector-diff {
+  overflow: visible;
+  overflow-wrap: anywhere;
 }
 
 .diff-label {
@@ -212,7 +345,7 @@ code {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-top: 0.75rem;
+  margin-top: 0.6rem;
   padding: 0.9rem 1rem;
   border: 1px solid #d8e2ef;
   border-radius: 0.75rem;
@@ -243,8 +376,9 @@ code {
 .timeline-complete { color: #17603c !important; }
 .timeline-complete span { color: #17834c; }
 
-@media (max-width: 1050px) {
-  .repair-panel-grid { flex: 0; grid-template-columns: 1fr; }
+@media (max-width: 850px) {
+  .repair-workspace { grid-template-columns: 1fr; }
+  .repair-panel-grid { grid-template-columns: 1fr 1fr; }
   .repair-timeline { align-items: start; flex-direction: column; }
   .repair-timeline ol { justify-content: flex-start; }
 }
@@ -254,4 +388,6 @@ code {
   .repair-console { min-height: calc(100vh - 1rem); padding: 1.25rem; }
   .repair-console-header { align-items: start; flex-direction: column; }
   .status-badge { white-space: normal; }
+  .repair-panel-grid { grid-template-columns: 1fr; }
+  .repair-panel-action .provider-options { grid-template-columns: 1fr; }
 }

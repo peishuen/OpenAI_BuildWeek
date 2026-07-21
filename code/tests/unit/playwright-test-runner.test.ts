@@ -67,9 +67,11 @@ describe("NodePlaywrightTestRunner", () => {
     });
 
     const result = await runner.runTarget();
+    const suiteResult = await runner.runSuite();
 
     expect(result).toMatchObject({ exitCode: 1, report: targetFailureReport });
-    expect(commands).toHaveLength(1);
+    expect(suiteResult).toMatchObject({ exitCode: 1, report: targetFailureReport });
+    expect(commands).toHaveLength(2);
     expect(commands[0].command).toBe(process.execPath);
     expect(commands[0].args).toEqual([
       expect.stringMatching(/[\\/]@playwright[\\/]test[\\/]cli\.js$/),
@@ -80,6 +82,13 @@ describe("NodePlaywrightTestRunner", () => {
     ]);
     expect(commands[0].shell).toBe(false);
     expect(commands[0].env.VITEST).toBeUndefined();
+    expect(commands[1].args).toEqual([
+      expect.stringMatching(/[\\/]@playwright[\\/]test[\\/]cli\.js$/),
+      "test",
+      "--grep-invert",
+      "@baseline-only|@sandbox-only",
+      "--reporter=json",
+    ]);
   });
 
   it("runs the installed Playwright CLI without a Windows command shell", async () => {

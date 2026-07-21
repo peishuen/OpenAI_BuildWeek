@@ -1,9 +1,21 @@
-import type { RepairEvent, RepairRun } from "./repair";
+import type { ProposalMode, RepairEvent, RepairRun } from "./repair";
 
-type ApiResponse = { data: RepairRun };
+type ApiResponse<T> = { data: T };
 
-async function readRepairRun(response: Response): Promise<RepairRun> {
-  const body = await response.json().catch(() => undefined) as ApiResponse | undefined;
+export type SandboxStatus = {
+  fixture: { state: "baseline" | "alternate" };
+  providers: {
+    defaultMode: ProposalMode;
+    qwen: { available: boolean; message: string };
+    fixture: { available: true };
+  };
+  canReset: boolean;
+};
+
+export type SandboxAction = Pick<SandboxStatus, "fixture">;
+
+async function readData<T>(response: Response): Promise<T> {
+  const body = await response.json().catch(() => undefined) as ApiResponse<T> | undefined;
   if (!response.ok || !body?.data) {
     throw new Error("The repair service could not complete this request.");
   }
@@ -11,12 +23,28 @@ async function readRepairRun(response: Response): Promise<RepairRun> {
   return body.data;
 }
 
-export async function startRepairRun() {
-  return readRepairRun(await fetch("/api/repair-runs", { method: "POST" }));
+export async function getSandboxStatus() {
+  return readData<SandboxStatus>(await fetch("/api/sandbox"));
+}
+
+export async function simulateRegression() {
+  return readData<SandboxAction>(await fetch("/api/sandbox/simulate", { method: "POST" }));
+}
+
+export async function resetSandbox() {
+  return readData<SandboxAction>(await fetch("/api/sandbox/reset", { method: "POST" }));
+}
+
+export async function startRepairRun(proposalMode: ProposalMode) {
+  return readData<RepairRun>(await fetch("/api/repair-runs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ proposalMode }),
+  }));
 }
 
 export async function approveRepairRun(runId: string) {
-  return readRepairRun(await fetch(`/api/repair-runs/${encodeURIComponent(runId)}/approval`, { method: "POST" }));
+  return readData<RepairRun>(await fetch(`/api/repair-runs/${encodeURIComponent(runId)}/approval`, { method: "POST" }));
 }
 
 export function subscribeToRepairRun(runId: string, onUpdate: (event: RepairEvent) => void) {
