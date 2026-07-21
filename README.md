@@ -10,7 +10,7 @@ Instead of applying a model-generated change automatically, the console captures
 
 ## Demo video
 
-> Add the public YouTube demo URL here before submitting.
+[Watch the demo on YouTube](https://youtu.be/MCH7RnR9lug)
 
 The video demonstrates the browser-only workflow: simulate a selector regression, review the proposal, approve the change, and watch the target test and full suite pass.
 
