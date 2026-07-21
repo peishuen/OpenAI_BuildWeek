@@ -4,6 +4,79 @@
 
 Build a local TypeScript application that demonstrates one approval-gated Playwright selector repair. The implementation deliberately establishes a deterministic passing/failing test fixture and a safe repair engine before adding the dashboard polish or live Qwen call. This makes the highest-risk claim—one constrained repair can be proposed, approved, applied, and verified—testable early.
 
+## Task 12 extension: Browser-only sandbox and Qwen-primary workflow
+
+Tasks 1-11 are complete. The remaining work turns the existing terminal-driven rehearsal into a browser-only customer journey while making Qwen, rather than a recorded proposal, the visible primary provider. The fixture provider remains a clearly labelled offline fallback for rehearsals and Qwen outages.
+
+### Architecture decisions
+
+- Keep the workspace local and bundled. The browser may request only the documented login-fixture mutation; it cannot name a path, command, selector, or repository.
+- Refactor the current mutation logic into a server-owned sandbox-fixture module. The existing script reuses that module for developer recovery, while browser routes call the same constrained functions.
+- Choose a proposal provider per repair run. The Qwen option is selected by default when server configuration is valid; the fixture option is an explicit UI fallback and is stored/disclosed as run metadata.
+- Keep proposal generation separate from patch policy. Both provider modes continue through the same validator, approval gate, target-test check, full-suite check, and restoration path.
+- Reset only recovers a simulated regression before approval or after a failed repair. It is unavailable after a completed repair because that repair intentionally changed the test selector to match the current fixture state.
+
+### Dependency graph
+
+```text
+Constrained sandbox-fixture module
+  -> sandbox simulation/reset API
+       -> browser simulation and recovery controls
+  -> existing terminal recovery script
+
+Per-run provider selection and Qwen configuration status
+  -> typed repair-run API
+       -> provider-aware browser client and status display
+  -> live-Qwen / explicit-fixture proposal choice
+       -> existing approval-gated patch and verification flow
+
+All feature slices
+  -> rehearsal documentation and final quality gate
+```
+
+### Implementation sequence
+
+1. Extract and test the constrained fixture mutation first, so all later UI actions call one safe source of truth.
+2. Add per-run proposal-mode state and provider selection before exposing it through HTTP; this keeps Qwen-primary behavior explicit and testable without a browser.
+3. Add typed API endpoints for sandbox state/actions and proposal-mode selection, including secret-free configuration disclosure.
+4. Build the vertical UI slice: sandbox label, simulate/reset controls, provider disclosure/choice, and existing repair flow integration.
+5. Rehearse the Qwen-primary and fixture-fallback paths; update the customer-facing demo script and recovery checklist.
+
+### Verification checkpoints
+
+**Checkpoint A - safe backend boundary (after Tasks 12.1-12.3)**
+
+- The only browser-triggered source mutation is the one known login button-ID toggle.
+- A repair run records and returns its selected provider without exposing credentials.
+- Qwen is the default available option; fixture is an intentional fallback.
+- Unit/API tests cover allowed and rejected actions.
+
+**Checkpoint B - customer journey (after Task 12.4)**
+
+- A browser user can simulate the regression, select Qwen, start a repair, approve it, and see both verification results.
+- Fixture fallback is visibly identified and neither mode patches before approval.
+- Reset is available only when it restores a coherent pre-repair/failed state.
+
+**Checkpoint C - rehearsal-ready (after Task 12.5)**
+
+- The Qwen-primary path is measured from simulated regression through full-suite result.
+- The offline fixture fallback is rehearsed separately.
+- `npm run lint`, `npm run typecheck`, `npm run test:unit`, `npm run test:e2e`, and `npm run build` pass from the restored baseline.
+
+### Risks and mitigations
+
+| Risk | Impact | Mitigation |
+| --- | --- | --- |
+| Qwen credentials are absent or a request fails | High | Disable or safely explain unavailable live mode; make the user explicitly select the labelled offline fixture fallback. |
+| Qwen returns a valid-looking but ineffective selector | High | Preserve existing approval, target-test, full-suite, and restoration checks; never claim success before both checks pass. |
+| Browser controls broaden file-write access | High | Put all mutation logic in one server module with a fixed target and no caller-controlled path/value. |
+| Reset breaks a successful repaired state | Medium | Restrict reset to unrepaired/failed runs and explain the state in the UI. |
+| Live timing exceeds the demo budget | Medium | Rehearse early, cap Qwen timeout, and disclose fixture fallback rather than silently switching providers. |
+
+### Parallelization
+
+The mutation-module extraction and provider-run-state refactor are independent at first, but the API contract must wait for both. UI work then depends on the API contract. Documentation can be drafted in parallel after the API/UI labels are finalized; the live rehearsal must be last.
+
 ## Dependency Graph
 
 ```text

@@ -258,26 +258,130 @@ Follow tasks in dependency order. Do not start the live Qwen integration until t
 
 **Estimated scope:** Medium
 
-## Task 12: Rehearse, harden, and document the two-minute demo
+## Task 12: Browser-only sandbox and Qwen-primary rehearsal
 
-**Description:** Measure latency, rehearse two prepared mutations, confirm the fixture fallback, improve presentation-state errors, and document exact presenter steps and recovery actions.
+Implement the approved browser-only sandbox workflow in five small slices. Qwen is the customer-facing primary provider; the recorded fixture is an explicitly selected offline fallback. Do not start implementation until this task breakdown is approved.
+
+### Task 12.1: Extract the bounded sandbox-fixture mutation
+
+**Description:** Move the fixed login button-ID toggle/reset behavior from the terminal script into a reusable server-owned module. Keep the script as a development wrapper so the UI and script share one deterministic implementation.
 
 **Acceptance criteria:**
 
-- [ ] Two selector mutations produce valid repair proposals and green full-suite results in rehearsal.
-- [ ] The post-failure flow completes under 30 seconds on the demo machine.
-- [ ] The demo script includes green baseline, mutation, failure, proposal review, approval, targeted pass, full-suite pass, and fallback disclosure.
+- [ ] Only the known `src/LoginPage.tsx` sign-in button ID can be toggled or reset.
+- [ ] The operation reports the resulting sandbox state without accepting a browser-supplied path or replacement string.
+- [ ] Existing terminal mutation verification preserves its current green-to-one-failure-to-restored behavior.
 
 **Verification:**
 
-- [ ] `npm run lint && npm run typecheck && npm run test:unit && npm run test:e2e && npm run build`
-- [ ] Timed manual rehearsal from mutation to full-suite result.
+- [ ] Focused unit tests cover baseline, alternate, and invalid fixture-source states.
+- [ ] `npm run test:mutation`
+- [ ] `npm run typecheck`
 
-**Dependencies:** Tasks 10 and 11
+**Dependencies:** Tasks 1-3
 
-**Files likely touched:** `docs/demo-script.md`, `docs/rehearsal-checklist.md`, `src/client/dashboard/RepairConsole.tsx`, `tests/e2e/login.spec.ts`
+**Files likely touched:** `src/sandbox-fixture.ts`, `scripts/repair-mutation.mjs`, `tests/unit/sandbox-fixture.test.ts`
 
 **Estimated scope:** Small
+
+**Required skill activation:** Follow [Task 12.1](task-12-skill-activation.md#task-121-bounded-sandbox-fixture-mutation).
+
+### Task 12.2: Make proposal-provider choice explicit per repair run
+
+**Description:** Evolve the repair-run/orchestrator contract so a run records whether it uses Qwen or the fixture fallback. The orchestrator selects the requested provider but retains the existing shared validation, approval, patch, verification, and restoration behavior.
+
+**Acceptance criteria:**
+
+- [ ] A run records a provider mode of `qwen` or `fixture` and exposes no credential material.
+- [ ] Qwen is selected as the primary mode when live configuration is available; fixture mode is accepted only as an explicit fallback choice.
+- [ ] Both modes traverse the same no-patch-before-approval and restore-on-failed-verification rules.
+
+**Verification:**
+
+- [ ] Focused orchestrator tests prove selection is per run and does not bypass approval.
+- [ ] Existing Qwen provider error tests still show safe, fallback-oriented messages.
+- [ ] `npm run typecheck`
+
+**Dependencies:** Task 11
+
+**Files likely touched:** `src/repair.ts`, `src/repair-orchestrator.ts`, `src/proposal-provider.ts`, `tests/unit/repair-orchestrator.test.ts`, `tests/unit/qwen-proposal-provider.test.ts`
+
+**Estimated scope:** Medium
+
+**Required skill activation:** Follow [Task 12.2](task-12-skill-activation.md#task-122-per-run-provider-choice).
+
+### Task 12.3: Add typed sandbox and provider-aware API boundaries
+
+**Description:** Add API routes for reading sandbox/provider availability, simulating the regression, resetting a recoverable sandbox state, and starting a provider-selected repair. Wire server environment configuration without exposing secrets.
+
+**Acceptance criteria:**
+
+- [ ] The API accepts only a validated proposal mode and never accepts a target path, command, or selector.
+- [ ] Qwen availability is disclosed as a boolean/safe message; API keys, base URLs, and raw provider errors never reach the browser.
+- [ ] Simulation/reset routes call only the bounded sandbox-fixture module and reject reset after a completed repair.
+
+**Verification:**
+
+- [ ] API tests cover valid simulation, invalid mode, missing run, reset state rules, and secret-safe errors.
+- [ ] Environment tests cover configured Qwen and unavailable Qwen states.
+- [ ] `npm run test:unit -- --run tests/unit/repair-api.test.ts tests/unit/env.test.ts`
+
+**Dependencies:** Tasks 12.1 and 12.2
+
+**Files likely touched:** `src/repair-routes.ts`, `src/server.ts`, `src/env.ts`, `tests/unit/repair-api.test.ts`, `tests/unit/env.test.ts`
+
+**Estimated scope:** Medium
+
+**Required skill activation:** Follow [Task 12.3](task-12-skill-activation.md#task-123-sandbox-and-provider-aware-api).
+
+### Task 12.4: Deliver the browser-only sandbox customer journey
+
+**Description:** Extend the Repair Console and browser client with visible sandbox disclosure, Qwen-primary provider state, explicit fixture fallback, regression simulation, recoverable reset, and the existing start/approve timeline.
+
+**Acceptance criteria:**
+
+- [ ] The UI says **Sandbox workspace** and states that it affects only the bundled login fixture and repair target.
+- [ ] **Simulate selector regression** starts a known failure without a terminal command; **Start repair** uses Qwen by default when available.
+- [ ] Fixture fallback is visibly labelled; no state implies it was a Qwen response.
+- [ ] The UI prevents duplicate actions and offers reset only in a safe recovery state.
+
+**Verification:**
+
+- [ ] Focused client/status tests cover provider and reset messaging.
+- [ ] Manual browser flow: simulate -> Qwen proposal -> approve -> target pass -> suite pass.
+- [ ] Manual browser flow: explicit fixture fallback is clearly labelled and completes the same safe loop.
+- [ ] `npm run build`
+
+**Dependencies:** Task 12.3
+
+**Files likely touched:** `src/RepairConsole.tsx`, `src/repair-client.ts`, `src/repair-console-status.ts`, `src/repair-console.css`, `tests/unit/repair-console.test.ts`
+
+**Estimated scope:** Medium
+
+**Required skill activation:** Follow [Task 12.4](task-12-skill-activation.md#task-124-browser-only-customer-journey).
+
+### Task 12.5: Rehearse, document, and gate the demo
+
+**Description:** Replace terminal mutation instructions with the approved customer journey, document Qwen setup/fallback/recovery, measure the live path, and record the results in a concise rehearsal checklist.
+
+**Acceptance criteria:**
+
+- [ ] The presenter script uses only browser controls after starting the app; terminal mutation commands are omitted from the customer flow.
+- [ ] Documentation distinguishes live-Qwen primary mode from explicitly selected fixture fallback and gives safe recovery actions.
+- [ ] At least one live-Qwen rehearsal and one fixture-fallback rehearsal have recorded duration and result.
+
+**Verification:**
+
+- [ ] Timed browser rehearsal from simulation to full-suite result.
+- [ ] `npm run lint && npm run typecheck && npm run test:unit && npm run test:e2e && npm run build`
+
+**Dependencies:** Task 12.4
+
+**Files likely touched:** `docs/demo-script.md`, `docs/rehearsal-checklist.md`, `docs/specs/browser-only-sandbox-repair-workflow.md`
+
+**Estimated scope:** Small
+
+**Required skill activation:** Follow [Task 12.5](task-12-skill-activation.md#task-125-rehearsal-documentation-and-final-gate).
 
 ## Final Definition of Done
 
