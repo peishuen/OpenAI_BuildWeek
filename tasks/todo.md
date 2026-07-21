@@ -1,6 +1,6 @@
 # Build Tasks: Self-Healing Playwright Repair Console
 
-Follow tasks in dependency order. Do not start the live OpenAI integration until the fixture-driven approval flow safely patches and verifies the demo suite.
+Follow tasks in dependency order. Do not start the live Qwen integration until the fixture-driven approval flow safely patches and verifies the demo suite.
 
 ## Phase 1 — Foundation and deterministic failure
 
@@ -12,7 +12,7 @@ Follow tasks in dependency order. Do not start the live OpenAI integration until
 
 - [ ] `npm run dev`, `build`, `lint`, `typecheck`, `test:unit`, and `test:e2e` scripts exist.
 - [ ] TypeScript strict mode and ESLint run with no starter errors.
-- [ ] `.env.example` documents `OPENAI_API_KEY` and `OPENAI_MODEL` only; `.env` is ignored.
+- [ ] `.env.example` documents `QWEN_API_KEY`, `QWEN_BASE_URL`, and `QWEN_MODEL`; `.env` is ignored.
 
 **Verification:**
 
@@ -237,24 +237,24 @@ Follow tasks in dependency order. Do not start the live OpenAI integration until
 
 ## Phase 4 — Live model integration and rehearsal
 
-## Task 11: Add the server-only OpenAI proposal provider
+## Task 11: Add the server-only Qwen proposal provider
 
-**Description:** Implement the Responses API provider behind the existing proposal-provider interface. Send only sanitized failure context; require the structured proposal schema and handle timeout, API, and validation failures safely.
+**Description:** Implement the Qwen OpenAI-compatible Chat Completions provider behind the existing proposal-provider interface. Send only sanitized failure context, require JSON mode with thinking disabled, and handle timeout, API, JSON, and validation failures safely.
 
 **Acceptance criteria:**
 
-- [ ] The browser never receives `OPENAI_API_KEY` or raw request credentials.
+- [ ] The browser never receives `QWEN_API_KEY` or raw request credentials.
 - [ ] A live response uses the same validator and patch policy as a recorded fixture.
 - [ ] Missing key, timeout, invalid output, and API errors leave the test file unchanged and show a recoverable dashboard state.
 
 **Verification:**
 
-- [ ] `npm run test:unit -- --run tests/unit/openai-proposal-provider.test.ts`
+- [ ] `npm run test:unit -- --run tests/unit/qwen-proposal-provider.test.ts`
 - [ ] Manual run with an API key validates one prepared mutation.
 
 **Dependencies:** Task 7
 
-**Files likely touched:** `src/server/repair/openai-proposal-provider.ts`, `src/server/config/env.ts`, `src/server/repair/proposal-provider.ts`, `tests/unit/openai-proposal-provider.test.ts`, `.env.example`
+**Files likely touched:** `src/qwen-proposal-provider.ts`, `src/env.ts`, `src/proposal-provider.ts`, `tests/unit/qwen-proposal-provider.test.ts`, `.env.example`
 
 **Estimated scope:** Medium
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Build a local TypeScript application that demonstrates one approval-gated Playwright selector repair. The implementation deliberately establishes a deterministic passing/failing test fixture and a safe repair engine before adding the dashboard polish or live OpenAI call. This makes the highest-risk claim—one constrained repair can be proposed, approved, applied, and verified—testable early.
+Build a local TypeScript application that demonstrates one approval-gated Playwright selector repair. The implementation deliberately establishes a deterministic passing/failing test fixture and a safe repair engine before adding the dashboard polish or live Qwen call. This makes the highest-risk claim—one constrained repair can be proposed, approved, applied, and verified—testable early.
 
 ## Dependency Graph
 
@@ -15,14 +15,14 @@ Repository scaffold and shared contracts
   │           └─> Approval-gated targeted + full-suite verification
   └─> Dashboard shell and shared repair-state events
         └─> Failure / diagnosis / diff / approval experience
-              └─> End-to-end demo flow and live OpenAI adapter
+              └─> End-to-end demo flow and live Qwen adapter
 ```
 
 ## Architecture Decisions
 
 - Keep the product in one TypeScript repository: React/Vite client, Express service, Playwright tests, and pure repair-engine modules.
 - Treat repair proposals as data, not code. The system permits exactly one validated CSS-selector string replacement in `tests/e2e/` after an explicit UI approval.
-- Build with deterministic proposal fixtures first. The live OpenAI adapter plugs into the same proposal interface only after safety and verification behavior work locally.
+- Build with deterministic proposal fixtures first. The live Qwen adapter plugs into the same proposal interface only after safety and verification behavior work locally.
 - Store a run in memory and send its state to the dashboard over SSE; use polling only if SSE risks demo stability.
 - Verify a repair in two stages: rerun the affected test for immediate feedback, then run the entire small suite for credibility.
 
@@ -53,7 +53,7 @@ Repository scaffold and shared contracts
 
 ### Phase 4: Live intelligence and rehearsal
 
-9. Add the server-only OpenAI structured-output adapter, with timeouts, error states, and the same proposal validation boundary.
+9. Add the server-only Qwen JSON-mode adapter, with timeouts, error states, and the same proposal validation boundary.
 10. Rehearse at least two controlled selector mutations, tune sanitized context size, harden errors, and document the two-minute demo script.
 
 **Checkpoint — complete:** live repair flow completes under 30 seconds, automated checks pass, and the demo can fall back to a recorded proposal if network/API availability fails.

@@ -13,6 +13,6 @@
 
 ## Boundaries
 
-- Keep `OPENAI_API_KEY` server-side and never commit `.env` files.
+- Keep `QWEN_API_KEY` server-side and never commit `.env` files.
 - Phase 1 may mutate only the documented login-button ID through `npm run mutation:apply` and `npm run mutation:reset`.
 - Do not add repair-engine, dashboard, API, or dependency work until the remaining phases.

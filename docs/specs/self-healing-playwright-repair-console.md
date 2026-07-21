@@ -25,11 +25,11 @@ The MVP's job is not to make all E2E tests autonomous. Its job is to turn one co
 - **Frontend:** React and Vite for the local dashboard and controlled demo login page.
 - **Service:** Express HTTP API in the same repository; it owns repair orchestration and local file access.
 - **Tests:** Playwright Test for the E2E suite; Vitest for unit tests of sanitization, patch validation, and repair state.
-- **LLM:** OpenAI Responses API, called only by the Express service. Default model configuration: `gpt-5.6`, overridable by `OPENAI_MODEL`.
+- **LLM:** Alibaba Cloud Model Studio Qwen through its OpenAI-compatible Chat Completions API, called only by the Express service. Default model configuration: `qwen3.7-plus-2026-05-26`, overridable by `QWEN_MODEL`.
 - **Validation:** Zod schemas for environment variables, API payloads, LLM proposals, and repair state.
 - **Transport:** Server-sent events (SSE) for one repair run's status timeline; polling is an acceptable fallback if SSE adds material risk.
 
-The model response must use structured output and contain only an explanation, evidence, and one CSS selector replacement. Current OpenAI model documentation lists GPT-5.6 and Structured Outputs support for the Responses API; implementation will follow the current official SDK guidance. [OpenAI model documentation](https://developers.openai.com/api/docs/models)
+The model response must use JSON mode with thinking disabled and contain only an explanation, evidence, and one CSS selector replacement. The server validates parsed JSON with the strict proposal schema before any patch policy is considered. [Qwen structured-output documentation](https://help.aliyun.com/en/model-studio/qwen-structured-output)
 
 ## Commands
 
@@ -72,7 +72,7 @@ docs/
 Playwright failure
   -> capture error, source location, failed CSS selector, DOM snapshot
   -> sanitize and size-limit DOM context
-  -> OpenAI structured repair proposal
+  -> Qwen JSON repair proposal
   -> validate proposal against strict patch policy
   -> dashboard displays evidence and diff
   -> developer approves
@@ -190,7 +190,7 @@ npm run build
 
 ### Always
 
-- Keep `OPENAI_API_KEY` server-side in `.env`; include only a redacted `.env.example` in version control.
+- Keep `QWEN_API_KEY` and `QWEN_BASE_URL` server-side in `.env`; include only a redacted `.env.example` in version control.
 - Validate model responses and API payloads before using them.
 - Restrict patch targets to the configured `tests/e2e/` root and display the exact diff before approval.
 - Run the target test and full demo suite after an approved patch.
@@ -205,7 +205,7 @@ npm run build
 
 ### Never
 
-- Expose secrets, raw environment variables, or the OpenAI API key to the client or git.
+- Expose secrets, raw environment variables, or the Qwen API key to the client or git.
 - Apply a patch without explicit UI approval.
 - Execute model-produced shell commands or write model-produced file paths.
 - Claim support for general test healing, flaky test remediation, or business-flow repair.
