@@ -25,8 +25,8 @@ function runPlaywrightJson() {
   const isWindows = process.platform === "win32";
   const executable = isWindows ? process.env.ComSpec ?? "cmd.exe" : "npx";
   const commandArguments = isWindows
-    ? ["/d", "/s", "/c", "npx playwright test --grep-invert @baseline-only --reporter=json"]
-    : ["playwright", "test", "--grep-invert", "@baseline-only", "--reporter=json"];
+    ? ["/d", "/s", "/c", "npx playwright test --grep @repair-target --reporter=json"]
+    : ["playwright", "test", "--grep", "@repair-target", "--reporter=json"];
 
   try {
     return {

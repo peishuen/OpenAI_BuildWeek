@@ -47,6 +47,16 @@ The service sends the existing sanitized failure context to Qwen. A valid, appro
 
 The fixture provider returns a recorded proposal for the two known sandbox button-ID states. It exists to demonstrate the workflow if Qwen credentials, API availability, or network latency prevent a live model call. The UI must identify it as **Offline fixture fallback**, so users do not mistake it for an AI-generated proposal.
 
+## Canonical sandbox baseline
+
+The coherent initial state is:
+
+- `src/LoginPage.tsx` renders `id="sign-in-button"`.
+- The `@repair-target` test uses `page.locator("#sign-in-button")`.
+- The sandbox reports this state as `baseline`.
+
+**Simulate selector regression** changes only the login button ID to `sign-in-button-v2`; the unchanged test selector must then fail. **Reset sandbox** returns the login fixture to the canonical baseline only before approval or after a failed repair. A successful approved repair intentionally leaves both the test selector and fixture in their repaired, matching state.
+
 ## Commands
 
 Run from `code/`:

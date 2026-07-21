@@ -77,6 +77,23 @@ All feature slices
 
 The mutation-module extraction and provider-run-state refactor are independent at first, but the API contract must wait for both. UI work then depends on the API contract. Documentation can be drafted in parallel after the API/UI labels are finalized; the live rehearsal must be last.
 
+### Corrective follow-up: restore the sandbox baseline (completed)
+
+Task 12.4 is structurally complete but its committed source fixture and repair-target test are both at the alternate `v2` state. That contradicts the sandbox module's documented baseline and reverses the user-facing state labels. Correct this before the Task 12.5 rehearsal.
+
+```text
+Canonical baseline source + repair-target selector
+  -> browser baseline/simulate assertions
+       -> full E2E and fixture-fallback rehearsal
+```
+
+1. Restored the login button and target-test selector together to `sign-in-button`; the sandbox fixture state machine remains unchanged.
+2. Made the existing browser test assert the initial `baseline` label, the first simulation's regression label, and the second simulation's return to baseline.
+3. Narrowed the legacy mutation safety check to `@repair-target`, so UI-only baseline checks cannot create a false second failure.
+4. Ran the complete suite from the restored baseline and exercised two fixture-fallback repair cycles through the browser UI. Live Qwen was not used to diagnose this deterministic baseline problem.
+
+**Risk:** Reset is intentionally one-sided before approval—it restores the application fixture only because the test is still at baseline. This invariant must remain explicit in the test names and manual rehearsal notes.
+
 ## Dependency Graph
 
 ```text

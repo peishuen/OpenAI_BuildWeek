@@ -360,6 +360,54 @@ Implement the approved browser-only sandbox workflow in five small slices. Qwen 
 
 **Required skill activation:** Follow [Task 12.4](task-12-skill-activation.md#task-124-browser-only-customer-journey).
 
+### Task 12.4.1: Restore the canonical sandbox baseline
+
+**Description:** Correct the committed state so the login fixture, repair-target test, and sandbox state machine agree that `sign-in-button` is baseline and `sign-in-button-v2` is the simulated regression.
+
+**Acceptance criteria:**
+
+- [x] `src/LoginPage.tsx` renders `id="sign-in-button"` before any simulation.
+- [x] The `@repair-target` locator is `#sign-in-button` before any simulation.
+- [x] No sandbox API, provider, patch-policy, or reset-state behavior is broadened.
+
+**Verification:**
+
+- [x] `npm run test:e2e -- --grep @repair-target`
+- [x] `npm run test:mutation`
+- [x] `npm run typecheck`
+
+**Dependencies:** Task 12.4
+
+**Files likely touched:** `src/LoginPage.tsx`, `tests/e2e/login.spec.ts`, `scripts/repair-mutation.mjs`
+
+**Estimated scope:** Small
+
+**Required skill activation:** Follow [Task 12.4](task-12-skill-activation.md#task-124-browser-only-customer-journey), starting with test-driven development.
+
+### Task 12.4.2: Guard the browser sandbox state contract
+
+**Description:** Strengthen the existing E2E scenario so it proves the baseline label on load, the regression label after one simulation, and the baseline label after a second simulation. This catches a fixture/test state mismatch before presentation.
+
+**Acceptance criteria:**
+
+- [x] The initial console state visibly reports `baseline`.
+- [x] The first simulation visibly reports `selector regression simulated` and makes the repair target fail.
+- [x] The second simulation visibly returns to `baseline` and restores the repair-target pass.
+
+**Verification:**
+
+- [x] `npm run test:e2e -- --grep @sandbox-only`
+- [x] `npm run test:e2e`
+- [x] Fixture-fallback path: simulate -> start -> approve -> target pass -> full-suite pass (two cycles; restored baseline).
+
+**Dependencies:** Task 12.4.1
+
+**Files likely touched:** `tests/e2e/login.spec.ts`
+
+**Estimated scope:** Small
+
+**Required skill activation:** Follow [Task 12.4](task-12-skill-activation.md#task-124-browser-only-customer-journey), including browser verification.
+
 ### Task 12.5: Rehearse, document, and gate the demo
 
 **Description:** Replace terminal mutation instructions with the approved customer journey, document Qwen setup/fallback/recovery, measure the live path, and record the results in a concise rehearsal checklist.

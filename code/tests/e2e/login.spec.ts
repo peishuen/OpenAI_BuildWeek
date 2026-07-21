@@ -56,6 +56,7 @@ test("toggles the fixed selector regression twice without terminal access @sandb
 
   const simulateButton = page.getByRole("button", { name: "Simulate selector regression" });
   const sandboxStatus = page.getByRole("status");
+  await expect(sandboxStatus).toContainText("baseline");
   await expect(simulateButton).toBeEnabled();
   await simulateButton.click();
   await expect(sandboxStatus).toContainText("selector regression simulated");
@@ -140,7 +141,7 @@ test("signs in with the repair-target selector @repair-target", async ({ page })
 
   await page.getByLabel("Email").fill("demo@example.com");
   await page.getByLabel("Password").fill("password123");
-  await page.locator("#sign-in-button-v2").click();
+  await page.locator("#sign-in-button").click();
 
   await expect(page.locator(".toast[role='status']")).toHaveText("Success: Signed in successfully.");
 });
