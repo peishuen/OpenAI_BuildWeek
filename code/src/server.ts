@@ -8,7 +8,7 @@ import express from "express";
 
 import { readRepairEnvironment } from "./env";
 import { FixtureProposalProvider, recordedFailureDomSnapshot } from "./fixture-proposal-provider";
-import { OpenAiProposalProvider } from "./openai-proposal-provider";
+import { QwenProposalProvider } from "./qwen-proposal-provider";
 import { RepairEventStore } from "./repair-events";
 import { RepairOrchestrator } from "./repair-orchestrator";
 import { apiErrorHandler, createRepairRouter, type RepairRunController } from "./repair-routes";
@@ -38,8 +38,12 @@ const port = Number(process.env.PORT ?? 3001);
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const events = new RepairEventStore();
 const environment = readRepairEnvironment();
-const proposalProvider = environment.REPAIR_PROPOSAL_PROVIDER === "openai"
-  ? new OpenAiProposalProvider({ apiKey: environment.OPENAI_API_KEY, model: environment.OPENAI_MODEL })
+const proposalProvider = environment.REPAIR_PROPOSAL_PROVIDER === "qwen"
+  ? new QwenProposalProvider({
+    apiKey: environment.QWEN_API_KEY,
+    baseURL: environment.QWEN_BASE_URL,
+    model: environment.QWEN_MODEL,
+  })
   : new FixtureProposalProvider();
 // Connect repair progress updates to the in-memory SSE event store.
 const orchestrator = new RepairOrchestrator({

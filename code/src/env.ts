@@ -2,9 +2,19 @@ import { z } from "zod";
 
 /* Validate the server-only settings used to select a proposal provider. */
 const RepairEnvironmentSchema = z.object({
-  OPENAI_API_KEY: z.string().trim().min(1).optional(),
-  OPENAI_MODEL: z.string().trim().min(1).default("gpt-5.6"),
-  REPAIR_PROPOSAL_PROVIDER: z.enum(["fixture", "openai"]).default("fixture"),
+  QWEN_API_KEY: z.string().trim().min(1).optional(),
+  QWEN_BASE_URL: z.string().trim().url().optional(),
+  QWEN_MODEL: z.string().trim().min(1).default("qwen3.7-plus-2026-05-26"),
+  REPAIR_PROPOSAL_PROVIDER: z.enum(["fixture", "qwen"]).default("fixture"),
+}).superRefine((environment, context) => {
+  if (environment.REPAIR_PROPOSAL_PROVIDER !== "qwen") return;
+
+  if (!environment.QWEN_API_KEY) {
+    context.addIssue({ code: "custom", path: ["QWEN_API_KEY"], message: "QWEN_API_KEY is required for the Qwen provider." });
+  }
+  if (!environment.QWEN_BASE_URL) {
+    context.addIssue({ code: "custom", path: ["QWEN_BASE_URL"], message: "QWEN_BASE_URL is required for the Qwen provider." });
+  }
 });
 
 export type RepairEnvironment = z.infer<typeof RepairEnvironmentSchema>;
