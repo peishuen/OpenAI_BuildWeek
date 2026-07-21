@@ -1,11 +1,10 @@
 import { randomUUID } from "node:crypto";
 
 import { createFailureContext } from "./failure-context";
-import { ProposalProviderError } from "./openai-proposal-provider";
 import { applyValidatedPatch, restorePatch, type PatchSnapshot } from "./test-patcher";
 import { validateRepairProposal, type ValidatedPatchPlan } from "./proposal-validator";
 import { transitionRun, type RepairRun } from "./repair";
-import type { ProposalProvider } from "./proposal-provider";
+import { ProposalProviderError, type ProposalProvider } from "./proposal-provider";
 import { extractRepairTargetFailure, type PlaywrightTestRunner } from "./playwright-test-runner";
 
 type StoredRun = {

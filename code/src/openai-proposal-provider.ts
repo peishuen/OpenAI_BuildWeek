@@ -2,7 +2,9 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 
 import { RepairProposalSchema, type FailureContext } from "./repair";
-import type { ProposalProvider } from "./proposal-provider";
+import { ProposalProviderError, type ProposalProvider } from "./proposal-provider";
+
+export { ProposalProviderError } from "./proposal-provider";
 
 /* Describe the small Responses API surface needed by this provider and its tests. */
 export type OpenAiResponsesClient = {
@@ -17,15 +19,6 @@ export type OpenAiProposalProviderOptions = {
   timeoutMs?: number;
   client?: OpenAiResponsesClient;
 };
-
-/* Carry only safe, user-facing provider failures to the repair orchestrator. */
-export class ProposalProviderError extends Error {
-  /* Create an error whose message is safe to display in the dashboard. */
-  constructor(message: string) {
-    super(message);
-    this.name = "ProposalProviderError";
-  }
-}
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
